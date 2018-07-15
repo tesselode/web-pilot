@@ -1,1 +1,1 @@
-pico8 -run t4k.p8
+pico8 -run t1k.p8
