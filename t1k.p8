@@ -20,7 +20,6 @@ end
 
 function p3d:circfill(x, y, z, r, col)
 	r *= z
-	r /= 1 + sqrt(sqrt((x - 64) * (x - 64) + (y - 64) * (y - 64)))
 	local x, y = self:to2d(x, y, z)
 	circfill(x, y, r * z, col)
 end
@@ -42,6 +41,8 @@ function Class.Player:new(entities)
 	self.y = 0
 	self.z = .9
 	self.vy = 0
+	self.display_x = 128/10 + 128/5 * (self.x - 1)
+	self.smooth_display_x = self.display_x
 end
 
 function Class.Player:update()
@@ -63,11 +64,13 @@ function Class.Player:update()
 		self.vy = 0
 	end
 
+	self.display_x = 128/10 + 128/5 * (self.x - 1)
+	self.smooth_display_x += (self.display_x - self.smooth_display_x) * .5
 	p3d.hx += (64 + (2.5 - self.x) * 8 - p3d.hx) * .1
 end
 
 function Class.Player:draw()
-	p3d:circfill(128/10 + 128/5 * (self.x - 1), 128 - self.y, self.z, 64, 7)
+	p3d:circfill(self.smooth_display_x, 128 - self.y, self.z, 8, 7)
 end
 
 setmetatable(Class.Player, {
@@ -97,7 +100,7 @@ function Class.PlayerBullet:update()
 end
 
 function Class.PlayerBullet:draw()
-	p3d:circfill(128/10 + 128/5 * (self.x - 1), 128 - self.y, self.z, 24, 7)
+	p3d:circfill(128/10 + 128/5 * (self.x - 1), 128 - self.y, self.z, 3, 7)
 end
 
 setmetatable(Class.PlayerBullet, {
