@@ -3,7 +3,7 @@ version 16
 __lua__
 -- pseudo 3d drawing
 
-local p3d = {hx = 64, hy = 48}
+local p3d = {hx = 64, hy = 64}
 
 function p3d:to2d(x, y, z)
 	x += (self.hx - 64) * .67
@@ -27,15 +27,12 @@ end
 -->8
 -- classes
 
-local Class = {}
+local class = {}
 
-Class.Player = {
-	jumpPower = 5,
-	gravity = 1/3,
-}
-Class.Player.__index = Class.Player
+class.player = {}
+class.player.__index = class.player
 
-function Class.Player:new(entities)
+function class.player:new(entities)
 	self.entities = entities
 	self.x = 1
 	self.y = 0
@@ -45,20 +42,24 @@ function Class.Player:new(entities)
 	self.smooth_display_x = self.display_x
 end
 
-function Class.Player:update()
-	if btnp(0) and self.x > 1 then self.x -= 1 end
-	if btnp(1) and self.x < 5 then self.x += 1 end
-
-	if self.y == 0 and btnp(4) then
-		self.vy = self.jumpPower
+function class.player:update()
+	if self.y == 0 or self.y == 128 then
+		if btnp(0) and self.x > 1 then self.x -= 1 end
+		if btnp(1) and self.x < 5 then self.x += 1 end
+		if btnp(4) then
+			if self.y == 0 then self.vy = 10 end
+			if self.y == 128 then self.vy = -10 end
+		end
+		if btnp(5) then
+			add(self.entities, class.player_bullet(self.x, self.y, self.z))
+		end
 	end
 
-	if btnp(5) then
-		add(self.entities, Class.PlayerBullet(self.x, self.y, self.z))
-	end
-
-	self.vy -= self.gravity
 	self.y += self.vy
+	if self.y >= 128 then
+		self.y = 128
+		self.vy = 0
+	end
 	if self.y <= 0 then
 		self.y = 0
 		self.vy = 0
@@ -67,47 +68,48 @@ function Class.Player:update()
 	self.display_x = 128/10 + 128/5 * (self.x - 1)
 	self.smooth_display_x += (self.display_x - self.smooth_display_x) * .5
 	p3d.hx += (64 + (2.5 - self.x) * 8 - p3d.hx) * .1
+	p3d.hy += (64 + (self.y - 64) * 1/8 - p3d.hy) * .1
 end
 
-function Class.Player:draw()
+function class.player:draw()
 	p3d:circfill(self.smooth_display_x, 128 - self.y, self.z, 8, 7)
 end
 
-setmetatable(Class.Player, {
+setmetatable(class.player, {
 	__call = function(_, ...)
-		local player = setmetatable({}, Class.Player)
+		local player = setmetatable({}, class.player)
 		player:new(...)
 		return player
 	end
 })
 
-Class.PlayerBullet = {
+class.player_bullet = {
 	speed = .01,
 }
-Class.PlayerBullet.__index = Class.PlayerBullet
+class.player_bullet.__index = class.player_bullet
 
-function Class.PlayerBullet:new(x, y, z)
+function class.player_bullet:new(x, y, z)
 	self.x = x
 	self.y = y
 	self.z = z
 end
 
-function Class.PlayerBullet:update()
+function class.player_bullet:update()
 	self.z -= self.speed
 	if self.z < .4 then
 		self.dead = true
 	end
 end
 
-function Class.PlayerBullet:draw()
+function class.player_bullet:draw()
 	p3d:circfill(128/10 + 128/5 * (self.x - 1), 128 - self.y, self.z, 3, 7)
 end
 
-setmetatable(Class.PlayerBullet, {
+setmetatable(class.player_bullet, {
 	__call = function(_, ...)
-		local playerBullet = setmetatable({}, Class.PlayerBullet)
-		playerBullet:new(...)
-		return playerBullet
+		local player_Bullet = setmetatable({}, class.player_bullet)
+		player_Bullet:new(...)
+		return player_Bullet
 	end
 })
 
@@ -115,7 +117,7 @@ setmetatable(Class.PlayerBullet, {
 -- main loop
 
 local entities = {}
-add(entities, Class.Player(entities))
+add(entities, class.player(entities))
 
 function _update60()
 	for entity in all(entities) do
