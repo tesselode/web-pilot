@@ -1,6 +1,45 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
+-- utility
+
+local screen_shake = {
+	table = {
+		{-2, -2},
+		{-2, -2},
+		{2, -2},
+		{2, -2},
+		{1, 2},
+		{1, 2},
+		{-1, -1},
+		{-1, -1},
+		{-1, -1},
+		{1, 0},
+		{1, 0},
+		{1, 0},
+		{-1, 1},
+		{-1, 1},
+		{-1, 1},
+		{0, 0}
+	},
+}
+screen_shake.position = #screen_shake.table
+
+function screen_shake:start(position)
+	self.position = position
+end
+
+function screen_shake:update()
+	if self.position < #self.table then
+		self.position += 1
+	end
+end
+
+function screen_shake:get()
+	return self.table[self.position][1], self.table[self.position][2]
+end
+
+-->8
 -- pseudo 3d drawing
 
 local p3d = {hx = 64, hy = 64}
@@ -22,6 +61,12 @@ function p3d:circfill(x, y, z, r, col)
 	r *= z
 	local x, y = self:to2d(x, y, z)
 	circfill(x, y, r * z, col)
+end
+
+function p3d:rectfill(x1, y1, x2, y2, z, col)
+	local x1, y1 = self:to2d(x1, y1, z)
+	local x2, y2 = self:to2d(x2, y2, z)
+	rectfill(x1, y1, x2, y2, col)
 end
 
 -->8
@@ -56,13 +101,15 @@ function class.player:update()
 	end
 
 	self.y += self.vy
-	if self.y >= 128 then
+	if self.y > 128 then
 		self.y = 128
 		self.vy = 0
+		screen_shake:start(7)
 	end
-	if self.y <= 0 then
+	if self.y < 0 then
 		self.y = 0
 		self.vy = 0
+		screen_shake:start(7)
 	end
 
 	self.display_x = 128/10 + 128/5 * (self.x - 1)
@@ -126,6 +173,8 @@ function _update60()
 			del(entities, entity)
 		end
 	end
+
+	screen_shake:update()
 end
 
 local function draw_web()
@@ -139,10 +188,12 @@ end
 
 function _draw()
 	cls()
+	camera(screen_shake:get())
 	draw_web()
 	for entity in all(entities) do
 		if entity.draw then entity:draw() end
 	end
+	camera()
 	print('cpu: ' .. flr(stat(1) * 200), 0, 0, 7)
 	print('mem: ' .. flr(stat(0) / 1024), 0, 8, 7)
 end
