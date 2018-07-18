@@ -3,12 +3,24 @@ version 16
 __lua__
 -- resources
 
+local constant = {
+	web = {
+		width = 160,
+		spaces = 6,
+	}
+}
+
 local sprite = {
 	player_bullet = 3,
 }
 
 -->8
 -- utility
+
+local function web2screen(x)
+	local left = 64 - constant.web.width/2
+	return left + (constant.web.width / constant.web.spaces) * (x - .5)
+end
 
 local screen_shake = {
 	table = {
@@ -49,9 +61,10 @@ end
 -->8
 -- pseudo 3d drawing
 
-local p3d = {hx = 64, hy = 64}
+local p3d = {hx = 64, hy = 64, min_z = .25, max_z = .9}
 
 function p3d:to2d(x, y, z)
+	z = self.min_z + (self.max_z - self.min_z) * z
 	x += (self.hx - 64) * .67
 	y += (self.hy - 64) * .67
 	return self.hx + (x - self.hx) * z * z,
@@ -78,10 +91,10 @@ end
 
 function p3d:sprite(sx, sy, sw, sh, cx, cy, z)
 	local cx, cy = self:to2d(cx, cy, z)
-	local dx = cx - sw/2 * (z / .9)
-	local dy = cy - sh/2 * (z / .9)
-	local dw = sw * (z / .9)
-	local dh = sh * (z / .9)
+	local dx = cx - sw/2 * z
+	local dy = cy - sh/2 * z
+	local dw = sw * z
+	local dh = sh * z
 	sspr(sx, sy, sw, sh, dx, dy, dw, dh)
 end
 
@@ -97,16 +110,16 @@ function class.player:new(entities)
 	self.entities = entities
 	self.x = 1
 	self.y = 0
-	self.z = .9
+	self.z = 1
 	self.vy = 0
-	self.display_x = 128/10 + 128/5 * (self.x - 1)
+	self.display_x = web2screen(self.x)
 	self.smooth_display_x = self.display_x
 end
 
 function class.player:update()
 	if self.y == 0 or self.y == 128 then
 		if btnp(0) and self.x > 1 then self.x -= 1 end
-		if btnp(1) and self.x < 5 then self.x += 1 end
+		if btnp(1) and self.x < constant.web.spaces then self.x += 1 end
 		if btnp(4) then
 			if self.y == 0 then self.vy = 10 end
 			if self.y == 128 then self.vy = -10 end
@@ -128,14 +141,14 @@ function class.player:update()
 		screen_shake:start(7)
 	end
 
-	self.display_x = 128/10 + 128/5 * (self.x - 1)
+	self.display_x = web2screen(self.x)
 	self.smooth_display_x += (self.display_x - self.smooth_display_x) * .5
 	p3d.hx += (64 + (2.5 - self.x) * 8 - p3d.hx) * .1
 	p3d.hy += (64 + (self.y - 64) * 1/8 - p3d.hy) * .1
 end
 
-function class.player:draw()
-	p3d:sprite(8, 0, 16, 16, self.display_x, 128 - self.y, self.z)
+function class.player:draw_front()
+	p3d:sprite(8, 0, 16, 16, self.smooth_display_x, 128 - self.y, self.z)
 end
 
 setmetatable(class.player, {
@@ -147,7 +160,7 @@ setmetatable(class.player, {
 })
 
 class.player_bullet = {
-	speed = .01,
+	speed = .02,
 }
 class.player_bullet.__index = class.player_bullet
 
@@ -155,12 +168,12 @@ function class.player_bullet:new(x, y, z)
 	self.x = x
 	self.y = y
 	self.z = z
-	self.display_x = 128/10 + 128/5 * (self.x - 1)
+	self.display_x = web2screen(self.x)
 end
 
 function class.player_bullet:update()
 	self.z -= self.speed
-	if self.z < .4 then
+	if self.z < 0 then
 		self.dead = true
 	end
 end
@@ -195,12 +208,12 @@ function _update60()
 end
 
 local function draw_web()
-	for x = 0, 128, 128/5 do
-		p3d:line(x, 0, .4, x, 0, 2, 14)
-		p3d:line(x, 128, .4, x, 128, 2, 14)
+	for x = 64 - constant.web.width/2, 64 + constant.web.width/2, constant.web.width / constant.web.spaces do
+		p3d:line(x, 0, 0, x, 0, 2, 14)
+		p3d:line(x, 128, 0, x, 128, 2, 14)
 	end
-	p3d:line(0, 0, .4, 128, 0, .4, 14)
-	p3d:line(0, 128, .4, 128, 128, .4, 14)
+	p3d:line(64 - constant.web.width/2, 0, 0, 64 + constant.web.width/2, 0, 0, 14)
+	p3d:line(64 - constant.web.width/2, 128, 0, 64 + constant.web.width/2, 128, 0, 14)
 end
 
 function _draw()
@@ -209,6 +222,9 @@ function _draw()
 	draw_web()
 	for entity in all(entities) do
 		if entity.draw then entity:draw() end
+	end
+	for entity in all(entities) do
+		if entity.draw_front then entity:draw_front() end
 	end
 	camera()
 	print('cpu: ' .. flr(stat(1) * 200), 0, 0, 7)
