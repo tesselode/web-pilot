@@ -145,6 +145,16 @@ function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
 	end
 end
 
+local model = {
+	flipper = class.model {
+		{x = -1, y = -1, z = 0},
+		{x = 1, y = 1, z = 0},
+		{x = 1, y = -1, z = 0},
+		{x = -1, y = 1, z = 0},
+		{x = -1, y = -1, z = 0},
+	},
+}
+
 class.web = object:extend()
 
 class.web.min_z = .25
@@ -160,6 +170,7 @@ function class.web:add_point(x, y)
 end
 
 function class.web:get_position(position)
+	position += .5
 	position %= #self.points
 	if position == 0 then position = #self.points end
 	local a = flr(position)
@@ -183,6 +194,28 @@ function class.web:draw(p3d)
 	end
 end
 
+class.flipper = object:extend()
+
+function class.flipper:new(web, position, z)
+	self.web = web
+	self.position = position
+	self.z = z
+	self.x, self.y = self.web:get_position(self.position)
+	self.r = 0
+end
+
+function class.flipper:update()
+	if self.z < self.web.max_z then
+		self.z += .0015
+	end
+	self.r += .001
+	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.flipper:draw(p3d)
+	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, 6, 6, 1, 14)
+end
+
 -->8
 -- gameplay state
 
@@ -194,37 +227,29 @@ function state.gameplay:enter()
 	for angle = 0, 1 - 1/15, 1/15 do
 		self.web:add_point(
 			40 * cos(angle),
-			40 * sin(angle * sqrt(angle))
+			40 * sin(angle)
 		)
 	end
-	self.test = 0
-	self.test_model = class.model {
-		{x = -10, y = -10, z = 0},
-		{x = 10, y = 10, z = 0},
-		{x = 10, y = -10, z = 0},
-		{x = -10, y = 10, z = 0},
-		{x = -10, y = -10, z = 0},
-		{x = -10, y = -10, z = -.25},
-		{x = 10, y = 10, z = -.25},
-		{x = 10, y = -10, z = -.25},
-		{x = -10, y = 10, z = -.25},
-		{x = -10, y = -10, z = -.25},
-	}
+	self.entities = {}
+	self.spawn_timer = 1
 end
 
 function state.gameplay:update()
-	self.test -= 1/10
-	local x, y = self.web:get_position(self.test)
-	self.p3d.hx = 64 + (x - 64) * -.25
-	self.p3d.hy = 64 + (y - 64) * -.25
+	self.spawn_timer -= 1/60
+	while self.spawn_timer <= 0 do
+		self.spawn_timer += 1
+		add(self.entities, class.flipper(self.web, flr(rnd(#self.web.points)), 0))
+	end
+	for entity in all(self.entities) do
+		entity:update()
+	end
 end
 
 function state.gameplay:draw()
 	self.web:draw(self.p3d)
-	for i = 2, .1, -.1 do
-		self.test_model:draw(self.p3d, 64, 64, .5, self.test * .01, i, i, 1, 14)
+	for entity in all(self.entities) do
+		entity:draw(self.p3d)
 	end
-	print('cpu: ' .. flr(stat(1) * 200) .. '%', 0, 0, 7)
 end
 
 function _init()
@@ -238,4 +263,5 @@ end
 function _draw()
 	cls()
 	state_manager:call 'draw'
+	print('cpu: ' .. flr(stat(1) * 200) .. '%', 0, 0, 7)
 end
