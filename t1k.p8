@@ -201,16 +201,16 @@ class.player.reload_time = 8
 function class.player:new(web, entities, position)
 	self.web = web
 	self.entities = entities
-	self.position = position
+	self.target_position = position
+	self.position = self.target_position
 	self.z = 1
 	self.reload_timer = 0
-	self.x, self.y = self.web:get_position(self.position)
 end
 
 function class.player:update()
-	if btnp(0) then self.position -= 1 end
-	if btnp(1) then self.position += 1 end
-	self.x, self.y = self.web:get_position(self.position)
+	if btnp(0) then self.target_position -= 1 end
+	if btnp(1) then self.target_position += 1 end
+	self.position += (self.target_position - self.position) * .33
 
 	self.reload_timer -= 1
 	if self.reload_timer <= 0 and btn(4) then
@@ -229,7 +229,6 @@ function class.player_bullet:new(web, position, z)
 	self.web = web
 	self.position = position
 	self.z = z
-	self.x, self.y = self.web:get_position(self.position)
 end
 
 function class.player_bullet:update()
@@ -237,7 +236,10 @@ function class.player_bullet:update()
 	if self.z <= self.web.min_z then
 		self.dead = true
 	end
-	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.player_bullet:collide(other)
+	if other:is(class.flipper) then self.dead = true end
 end
 
 function class.player_bullet:draw(p3d)
@@ -250,16 +252,18 @@ function class.flipper:new(web, position, z)
 	self.web = web
 	self.position = position
 	self.z = z
-	self.x, self.y = self.web:get_position(self.position)
 	self.r = 0
 end
 
 function class.flipper:update()
 	if self.z < 1 then
-		self.z += .0015
+		self.z += .003
 	end
 	self.r += .001
-	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.flipper:collide(other)
+	if other:is(class.player_bullet) then self.dead = true end
 end
 
 function class.flipper:draw(p3d)
@@ -293,6 +297,22 @@ function state.gameplay:update()
 	end
 	for entity in all(self.entities) do
 		entity:update()
+		entity.x, entity.y = self.web:get_position(entity.position)
+	end
+	for i = 1, #self.entities - 1 do
+		local entity = self.entities[i]
+		for j = i + 1, #self.entities do
+			local other = self.entities[j]
+			local colliding = abs(other.x - entity.x) < 8
+						  and abs(other.y - entity.y) < 8
+						  and abs(other.z - entity.z) < .1
+			if colliding then
+				if entity.collide then entity:collide(other) end
+				if other.collide then other:collide(entity) end
+			end
+		end
+	end
+	for entity in all(self.entities) do
 		if entity.dead then del(self.entities, entity) end
 	end
 
