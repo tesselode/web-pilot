@@ -106,7 +106,7 @@ end
 
 function class.p3d:circfill(x, y, z, r, col)
 	local x, y = self:to2d(x, y, z)
-	circfill(x, y, r, col)
+	circfill(x, y, r * z, col)
 end
 
 -->8
@@ -196,10 +196,14 @@ end
 
 class.player = object:extend()
 
-function class.player:new(web, position)
+class.player.reload_time = 8
+
+function class.player:new(web, entities, position)
 	self.web = web
+	self.entities = entities
 	self.position = position
 	self.z = 1
+	self.reload_timer = 0
 	self.x, self.y = self.web:get_position(self.position)
 end
 
@@ -207,10 +211,37 @@ function class.player:update()
 	if btnp(0) then self.position -= 1 end
 	if btnp(1) then self.position += 1 end
 	self.x, self.y = self.web:get_position(self.position)
+
+	self.reload_timer -= 1
+	if self.reload_timer <= 0 and btn(4) then
+		self.reload_timer = self.reload_time
+		add(self.entities, class.player_bullet(self.web, self.position, self.z))
+	end
 end
 
 function class.player:draw(p3d)
 	p3d:circfill(self.x, self.y, self.z, 6, 10)
+end
+
+class.player_bullet = object:extend()
+
+function class.player_bullet:new(web, position, z)
+	self.web = web
+	self.position = position
+	self.z = z
+	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.player_bullet:update()
+	self.z -= .02
+	if self.z <= self.web.min_z then
+		self.dead = true
+	end
+	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.player_bullet:draw(p3d)
+	p3d:circfill(self.x, self.y, self.z, 2, 10)
 end
 
 class.flipper = object:extend()
@@ -250,7 +281,7 @@ function state.gameplay:enter()
 		)
 	end
 	self.entities = {}
-	self.player = add(self.entities, class.player(self.web, 1))
+	self.player = add(self.entities, class.player(self.web, self.entities, 1))
 	self.spawn_timer = 1
 end
 
@@ -262,6 +293,7 @@ function state.gameplay:update()
 	end
 	for entity in all(self.entities) do
 		entity:update()
+		if entity.dead then del(self.entities, entity) end
 	end
 
 	local target_hx = 64 - (self.player.x - 64) * .1
