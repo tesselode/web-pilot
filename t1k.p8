@@ -104,13 +104,18 @@ function class.p3d:line(x1, y1, z1, x2, y2, z2, col)
 	line(x1, y1, x2, y2, col)
 end
 
+function class.p3d:circfill(x, y, z, r, col)
+	local x, y = self:to2d(x, y, z)
+	circfill(x, y, r, col)
+end
+
 -->8
 -- classes
 
 class.web = object:extend()
 
-class.web.min_z = 1/4
-class.web.max_z = 1
+class.web.min_z = .25
+class.web.max_z = 1.25
 
 function class.web:new()
 	self.points = {}
@@ -119,6 +124,17 @@ end
 
 function class.web:add_point(x, y)
 	add(self.points, {x = x + 64, y = y + 64})
+end
+
+function class.web:get_position(position)
+	position %= #self.points
+	local a = flr(position)
+	if a == 0 then a = #self.points end
+	local b = ceil(position)
+	a, b = self.points[a], self.points[b]
+	local fraction = position % 1
+	return a.x + (b.x - a.x) * fraction,
+	       a.y + (b.y - a.y) * fraction
 end
 
 function class.web:draw(p3d)
@@ -141,23 +157,26 @@ state.gameplay = {}
 function state.gameplay:enter()
 	self.p3d = class.p3d()
 	self.web = class.web()
-	for angle = 0, 1 - 4/20, 1/20 do
+	for angle = 0, 1 - 1/15, 1/15 do
 		self.web:add_point(
-			40 * sqrt(abs(cos(angle))) * sgn(cos(angle)),
-			40 * sqrt(abs(sin(angle))) * sgn(sin(angle))
+			40 * cos(angle),
+			40 * sin(angle * sqrt(angle))
 		)
 	end
+	self.test = 0
 end
 
 function state.gameplay:update()
-	if btn(0) then self.p3d.hx -= 1 end
-	if btn(1) then self.p3d.hx += 1 end
-	if btn(2) then self.p3d.hy -= 1 end
-	if btn(3) then self.p3d.hy += 1 end
+	self.test -= 1/10
+	local x, y = self.web:get_position(self.test)
+	self.p3d.hx = 64 + (x - 64) * -.25
+	self.p3d.hy = 64 + (y - 64) * -.25
 end
 
 function state.gameplay:draw()
 	self.web:draw(self.p3d)
+	local x, y = self.web:get_position(self.test)
+	self.p3d:circfill(x, y, 1, 8, 7)
 end
 
 function _init()
