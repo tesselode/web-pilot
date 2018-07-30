@@ -146,6 +146,18 @@ function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
 end
 
 local model = {
+	player = class.model {
+		{x = -1, y = 0, z = 0},
+		{x = 0, y = -1, z = 0},
+		{x = 1, y = 0, z = 0},
+		{x = 0, y = 1, z = 0},
+		{x = -1, y = 0, z = 0},
+		{x = 0, y = 0, z = -.25},
+		{x = 1, y = 0, z = 0},
+		{x = 0, y = 1, z = 0},
+		{x = 0, y = 0, z = -.25},
+		{x = 0, y = -1, z = 0},
+	},
 	flipper = class.model {
 		{x = -1, y = -1, z = 0},
 		{x = 1, y = 1, z = 0},
@@ -196,7 +208,7 @@ end
 
 class.player = object:extend()
 
-class.player.reload_time = 8
+class.player.reload_time = 10
 
 function class.player:new(web, entities, position)
 	self.web = web
@@ -220,7 +232,8 @@ function class.player:update()
 end
 
 function class.player:draw(p3d)
-	p3d:circfill(self.x, self.y, self.z, 6, 10)
+	local r = atan2(self.x - 64, self.y - 64)
+	model.player:draw(p3d, self.x, self.y, self.z, r, 8, 8, 1, 10)
 end
 
 class.player_bullet = object:extend()
@@ -259,7 +272,7 @@ function class.flipper:update()
 	if self.z < 1 then
 		self.z += .003
 	end
-	self.r += .001
+	self.r += .002
 end
 
 function class.flipper:collide(other)
@@ -316,8 +329,8 @@ function state.gameplay:update()
 		if entity.dead then del(self.entities, entity) end
 	end
 
-	local target_hx = 64 - (self.player.x - 64) * .1
-	local target_hy = 64 - (self.player.y - 64) * .1
+	local target_hx = 64 - (self.player.x - 64) * 1/6
+	local target_hy = 64 - (self.player.y - 64) * 1/6
 	self.p3d.hx += (target_hx - self.p3d.hx) * .1
 	self.p3d.hy += (target_hy - self.p3d.hy) * .1
 end
