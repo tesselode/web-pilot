@@ -194,6 +194,25 @@ function class.web:draw(p3d)
 	end
 end
 
+class.player = object:extend()
+
+function class.player:new(web, position)
+	self.web = web
+	self.position = position
+	self.z = 1
+	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.player:update()
+	if btnp(0) then self.position -= 1 end
+	if btnp(1) then self.position += 1 end
+	self.x, self.y = self.web:get_position(self.position)
+end
+
+function class.player:draw(p3d)
+	p3d:circfill(self.x, self.y, self.z, 6, 10)
+end
+
 class.flipper = object:extend()
 
 function class.flipper:new(web, position, z)
@@ -205,7 +224,7 @@ function class.flipper:new(web, position, z)
 end
 
 function class.flipper:update()
-	if self.z < self.web.max_z then
+	if self.z < 1 then
 		self.z += .0015
 	end
 	self.r += .001
@@ -231,6 +250,7 @@ function state.gameplay:enter()
 		)
 	end
 	self.entities = {}
+	self.player = add(self.entities, class.player(self.web, 1))
 	self.spawn_timer = 1
 end
 
@@ -243,6 +263,11 @@ function state.gameplay:update()
 	for entity in all(self.entities) do
 		entity:update()
 	end
+
+	local target_hx = 64 - (self.player.x - 64) * .1
+	local target_hy = 64 - (self.player.y - 64) * .1
+	self.p3d.hx += (target_hx - self.p3d.hx) * .1
+	self.p3d.hy += (target_hy - self.p3d.hy) * .1
 end
 
 function state.gameplay:draw()
