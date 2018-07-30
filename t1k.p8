@@ -94,7 +94,7 @@ end
 function class.p3d:to2d(x, y, z)
 	x -= (self.hx - 64) / 3
 	y -= (self.hy - 64) / 3
-	z *= z
+	for i = 1, 4 do z *= z end
 	return self.hx + (x - self.hx) * z,
 	       self.hy + (y - self.hy) * z
 end
@@ -148,16 +148,16 @@ end
 
 local model = {
 	player = class.model {
-		{x = -1, y = 0, z = 1/12},
-		{x = 0, y = -1, z = 1/12},
-		{x = 1, y = 0, z = 1/12},
-		{x = 0, y = 1, z = 1/12},
-		{x = -1, y = 0, z = 1/12},
-		{x = 0, y = 0, z = -1/12},
-		{x = 1, y = 0, z = 1/12},
-		{x = 0, y = 1, z = 1/12},
-		{x = 0, y = 0, z = -1/12},
-		{x = 0, y = -1, z = 1/12},
+		{x = -1, y = 0, z = 1/72},
+		{x = 0, y = -1, z = 1/72},
+		{x = 1, y = 0, z = 1/72},
+		{x = 0, y = 1, z = 1/72},
+		{x = -1, y = 0, z = 1/72},
+		{x = 0, y = 0, z = -1/72},
+		{x = 1, y = 0, z = 1/72},
+		{x = 0, y = 1, z = 1/72},
+		{x = 0, y = 0, z = -1/72},
+		{x = 0, y = -1, z = 1/72},
 	},
 	flipper = class.model {
 		{x = -1, y = -1, z = 0},
@@ -170,8 +170,8 @@ local model = {
 
 class.web = object:extend()
 
-class.web.min_z = .5
-class.web.max_z = 1.05
+class.web.min_z = .9
+class.web.max_z = 1.01
 
 function class.web:new()
 	self.points = {}
@@ -239,7 +239,7 @@ end
 
 class.player_bullet = object:extend()
 
-class.player_bullet.speed = .01
+class.player_bullet.speed = .0025
 
 function class.player_bullet:new(web, position, z)
 	self.web = web
@@ -273,7 +273,7 @@ end
 
 function class.flipper:update()
 	if self.z < 1 then
-		self.z += .003
+		self.z += .00075
 	end
 	self.r += .002
 end
@@ -309,7 +309,7 @@ function state.gameplay:update()
 	self.spawn_timer -= 1/60
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
-		add(self.entities, class.flipper(self.web, flr(rnd(#self.web.points)), 0))
+		add(self.entities, class.flipper(self.web, flr(rnd(#self.web.points)), 0.75))
 	end
 	for entity in all(self.entities) do
 		entity:update()
@@ -321,7 +321,7 @@ function state.gameplay:update()
 			local other = self.entities[j]
 			local colliding = abs(other.x - entity.x) < 8
 						  and abs(other.y - entity.y) < 8
-						  and abs(other.z - entity.z) < .1
+						  and abs(other.z - entity.z) < .01
 			if colliding then
 				if entity.collide then entity:collide(other) end
 				if other.collide then other:collide(entity) end
