@@ -94,6 +94,7 @@ end
 function class.p3d:to2d(x, y, z)
 	x -= (self.hx - 64) / 3
 	y -= (self.hy - 64) / 3
+	z *= z
 	return self.hx + (x - self.hx) * z,
 	       self.hy + (y - self.hy) * z
 end
@@ -106,7 +107,7 @@ end
 
 function class.p3d:circfill(x, y, z, r, col)
 	local x, y = self:to2d(x, y, z)
-	circfill(x, y, r * z, col)
+	circfill(x, y, r * z * z, col)
 end
 
 -->8
@@ -147,16 +148,16 @@ end
 
 local model = {
 	player = class.model {
-		{x = -1, y = 0, z = 0},
-		{x = 0, y = -1, z = 0},
-		{x = 1, y = 0, z = 0},
-		{x = 0, y = 1, z = 0},
-		{x = -1, y = 0, z = 0},
-		{x = 0, y = 0, z = -.25},
-		{x = 1, y = 0, z = 0},
-		{x = 0, y = 1, z = 0},
-		{x = 0, y = 0, z = -.25},
-		{x = 0, y = -1, z = 0},
+		{x = -1, y = 0, z = 1/12},
+		{x = 0, y = -1, z = 1/12},
+		{x = 1, y = 0, z = 1/12},
+		{x = 0, y = 1, z = 1/12},
+		{x = -1, y = 0, z = 1/12},
+		{x = 0, y = 0, z = -1/12},
+		{x = 1, y = 0, z = 1/12},
+		{x = 0, y = 1, z = 1/12},
+		{x = 0, y = 0, z = -1/12},
+		{x = 0, y = -1, z = 1/12},
 	},
 	flipper = class.model {
 		{x = -1, y = -1, z = 0},
@@ -169,8 +170,8 @@ local model = {
 
 class.web = object:extend()
 
-class.web.min_z = .25
-class.web.max_z = 1.25
+class.web.min_z = .5
+class.web.max_z = 1.05
 
 function class.web:new()
 	self.points = {}
@@ -208,7 +209,7 @@ end
 
 class.player = object:extend()
 
-class.player.reload_time = 10
+class.player.reload_time = 6
 
 function class.player:new(web, entities, position)
 	self.web = web
@@ -238,6 +239,8 @@ end
 
 class.player_bullet = object:extend()
 
+class.player_bullet.speed = .01
+
 function class.player_bullet:new(web, position, z)
 	self.web = web
 	self.position = position
@@ -245,7 +248,7 @@ function class.player_bullet:new(web, position, z)
 end
 
 function class.player_bullet:update()
-	self.z -= .02
+	self.z -= self.speed
 	if self.z <= self.web.min_z then
 		self.dead = true
 	end
@@ -293,8 +296,8 @@ function state.gameplay:enter()
 	self.web = class.web()
 	for angle = 0, 1 - 1/15, 1/15 do
 		self.web:add_point(
-			40 * cos(angle),
-			40 * sin(angle)
+			50 * cos(angle - .5),
+			-25 * (sin(angle) + sin(sqrt(angle)) + sin(angle * angle))
 		)
 	end
 	self.entities = {}
@@ -329,8 +332,8 @@ function state.gameplay:update()
 		if entity.dead then del(self.entities, entity) end
 	end
 
-	local target_hx = 64 - (self.player.x - 64) * 1/6
-	local target_hy = 64 - (self.player.y - 64) * 1/6
+	local target_hx = 64 + (self.player.x - 64) * 1/6
+	local target_hy = 64 + (self.player.y - 64) * 1/6
 	self.p3d.hx += (target_hx - self.p3d.hx) * .1
 	self.p3d.hy += (target_hy - self.p3d.hy) * .1
 end
