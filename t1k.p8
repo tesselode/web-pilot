@@ -92,8 +92,8 @@ function class.p3d:new()
 end
 
 function class.p3d:to2d(x, y, z)
-	x += (self.hx - 64) / 3
-	y += (self.hy - 64) / 3
+	x -= (self.hx - 64) / 3
+	y -= (self.hy - 64) / 3
 	return self.hx + (x - self.hx) * z,
 	       self.hy + (y - self.hy) * z
 end
@@ -105,12 +105,48 @@ function class.p3d:line(x1, y1, z1, x2, y2, z2, col)
 end
 
 -->8
+-- classes
+
+class.web = object:extend()
+
+class.web.min_z = 1/4
+class.web.max_z = 1
+
+function class.web:new()
+	self.points = {}
+	self.closed = true
+end
+
+function class.web:add_point(x, y)
+	add(self.points, {x = x + 64, y = y + 64})
+end
+
+function class.web:draw(p3d)
+	for i = 1, #self.points do
+		local a = self.points[i]
+		if self.closed or i < #self.points then
+			local b = i == #self.points and self.points[1] or self.points[i + 1]
+			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 7)
+			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, 7)
+		end
+		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, 7)
+	end
+end
+
+-->8
 -- gameplay state
 
 state.gameplay = {}
 
 function state.gameplay:enter()
 	self.p3d = class.p3d()
+	self.web = class.web()
+	for angle = 0, 1 - 4/20, 1/20 do
+		self.web:add_point(
+			40 * sqrt(abs(cos(angle))) * sgn(cos(angle)),
+			40 * sqrt(abs(sin(angle))) * sgn(sin(angle))
+		)
+	end
 end
 
 function state.gameplay:update()
@@ -121,9 +157,7 @@ function state.gameplay:update()
 end
 
 function state.gameplay:draw()
-	for x = 0, 128, 128/5 do
-		self.p3d:line(x, 128, 0, x, 128, 1, 7)
-	end
+	self.web:draw(self.p3d)
 end
 
 function _init()
