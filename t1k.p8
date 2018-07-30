@@ -112,6 +112,39 @@ end
 -->8
 -- classes
 
+class.model = object:extend()
+
+function class.model:new(points)
+	self.points = points
+end
+
+function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
+	local c, s = cos(r), sin(r)
+	for i = 1, #self.points - 1 do
+		local a = self.points[i]
+		local b = self.points[i+1]
+		local ax, ay, az = a.x, a.y, a.z
+		ax, ay = c * ax - s * ay, s * ax + c * ay
+		ax *= sx
+		ay *= sy
+		az *= sz
+		ax += x
+		ay += y
+		az += z
+		local bx, by, bz = b.x, b.y, b.z
+		bx, by = c * bx - s * by, s * bx + c * by
+		bx *= sx
+		by *= sy
+		bz *= sz
+		bx += x
+		by += y
+		bz += z
+		local x1, y1 = p3d:to2d(ax, ay, az)
+		local x2, y2 = p3d:to2d(bx, by, bz)
+		line(x1, y1, x2, y2, col)
+	end
+end
+
 class.web = object:extend()
 
 class.web.min_z = .25
@@ -128,6 +161,7 @@ end
 
 function class.web:get_position(position)
 	position %= #self.points
+	if position == 0 then position = #self.points end
 	local a = flr(position)
 	if a == 0 then a = #self.points end
 	local b = ceil(position)
@@ -142,10 +176,10 @@ function class.web:draw(p3d)
 		local a = self.points[i]
 		if self.closed or i < #self.points then
 			local b = i == #self.points and self.points[1] or self.points[i + 1]
-			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 7)
-			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, 7)
+			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 12)
+			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, 12)
 		end
-		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, 7)
+		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, 12)
 	end
 end
 
@@ -164,6 +198,18 @@ function state.gameplay:enter()
 		)
 	end
 	self.test = 0
+	self.test_model = class.model {
+		{x = -10, y = -10, z = 0},
+		{x = 10, y = 10, z = 0},
+		{x = 10, y = -10, z = 0},
+		{x = -10, y = 10, z = 0},
+		{x = -10, y = -10, z = 0},
+		{x = -10, y = -10, z = -.25},
+		{x = 10, y = 10, z = -.25},
+		{x = 10, y = -10, z = -.25},
+		{x = -10, y = 10, z = -.25},
+		{x = -10, y = -10, z = -.25},
+	}
 end
 
 function state.gameplay:update()
@@ -175,8 +221,10 @@ end
 
 function state.gameplay:draw()
 	self.web:draw(self.p3d)
-	local x, y = self.web:get_position(self.test)
-	self.p3d:circfill(x, y, 1, 8, 7)
+	for i = 2, .1, -.1 do
+		self.test_model:draw(self.p3d, 64, 64, .5, self.test * .01, i, i, 1, 14)
+	end
+	print('cpu: ' .. flr(stat(1) * 200) .. '%', 0, 0, 7)
 end
 
 function _init()
