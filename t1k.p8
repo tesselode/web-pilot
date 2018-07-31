@@ -207,7 +207,9 @@ function class.web:draw(p3d)
 	end
 end
 
-class.player = object:extend()
+class.physical = object:extend()
+
+class.player = class.physical:extend()
 
 class.player.reload_time = 6
 
@@ -237,7 +239,7 @@ function class.player:draw(p3d)
 	model.player:draw(p3d, self.x, self.y, self.z, r, 8, 8, 1, 10)
 end
 
-class.player_bullet = object:extend()
+class.player_bullet = class.physical:extend()
 
 class.player_bullet.speed = .0025
 
@@ -262,15 +264,15 @@ function class.player_bullet:draw(p3d)
 	p3d:circfill(self.x, self.y, self.z, 2, 10)
 end
 
-class.flipper = object:extend()
+class.flipper = class.physical:extend()
 
 class.flipper.speed = .0005
 class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 
-function class.flipper:new(web, player, position, z)
+function class.flipper:new(web, entities, position, z)
 	self.web = web
-	self.player = player
+	self.entities = entities
 	self.position = position
 	self.z = z
 	self.flip_timer = self.flip_interval
@@ -305,11 +307,44 @@ function class.flipper:update()
 end
 
 function class.flipper:collide(other)
-	if other:is(class.player_bullet) then self.dead = true end
+	if other:is(class.player_bullet) then
+		for i = 1, 5 do
+			add(self.entities, class.particle(self.x, self.y, self.z, 14))
+		end
+		self.dead = true
+	end
 end
 
 function class.flipper:draw(p3d)
 	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, 6, 6, 1, 14)
+end
+
+class.particle = object:extend()
+
+function class.particle:new(x, y, z, color)
+	self.x = x
+	self.y = y
+	self.z = z
+	self.color = color
+	self.r = 2
+	self.direction = rnd(1)
+	self.speed = 2 + rnd(2)
+	self.life = 30
+end
+
+function class.particle:update()
+	self.life -= 1
+	if self.life == 0 then
+		self.dead = true
+	end
+	self.speed -= .05
+	self.r -= .1
+	self.x += self.speed * cos(self.direction)
+	self.y += self.speed * sin(self.direction)
+end
+
+function class.particle:draw(p3d)
+	p3d:circfill(self.x, self.y, self.z, self.r, self.color)
 end
 
 -->8
@@ -335,22 +370,28 @@ function state.gameplay:update()
 	self.spawn_timer -= 1/60
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
-		add(self.entities, class.flipper(self.web, self.player, flr(rnd(#self.web.points)), 0.75))
+		add(self.entities, class.flipper(self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
 	end
 	for entity in all(self.entities) do
 		entity:update()
-		entity.x, entity.y = self.web:get_position(entity.position)
+		if entity:is(class.physical) then
+			entity.x, entity.y = self.web:get_position(entity.position)
+		end
 	end
 	for i = 1, #self.entities - 1 do
 		local entity = self.entities[i]
-		for j = i + 1, #self.entities do
-			local other = self.entities[j]
-			local colliding = abs(other.x - entity.x) < 8
-						  and abs(other.y - entity.y) < 8
-						  and abs(other.z - entity.z) < .01
-			if colliding then
-				if entity.collide then entity:collide(other) end
-				if other.collide then other:collide(entity) end
+		if entity:is(class.physical) then
+			for j = i + 1, #self.entities do
+				local other = self.entities[j]
+				if other:is(class.physical) then
+					local colliding = abs(other.x - entity.x) < 8
+								and abs(other.y - entity.y) < 8
+								and abs(other.z - entity.z) < .01
+					if colliding then
+						if entity.collide then entity:collide(other) end
+						if other.collide then other:collide(entity) end
+					end
+				end
 			end
 		end
 	end
