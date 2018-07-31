@@ -210,7 +210,7 @@ function class.web:draw(p3d)
 		local a = self.points[i]
 		if self.closed or i < #self.points then
 			local b = i == #self.points and self.points[1] or self.points[i + 1]
-			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 1)
+			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 12)
 			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, 12)
 		end
 		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, 12)
