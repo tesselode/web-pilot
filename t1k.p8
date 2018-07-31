@@ -99,6 +99,14 @@ function class.p3d:to2d(x, y, z)
 	       self.hy + (y - self.hy) * z
 end
 
+function class.p3d:get_color(color, z)
+	if color == 14 then
+		if z < .95 then color = 13 end
+		if z < .925 then color = 2 end
+	end
+	return color
+end
+
 function class.p3d:line(x1, y1, z1, x2, y2, z2, col)
 	local x1, y1 = self:to2d(x1, y1, z1)
 	local x2, y2 = self:to2d(x2, y2, z2)
@@ -200,7 +208,7 @@ function class.web:draw(p3d)
 		local a = self.points[i]
 		if self.closed or i < #self.points then
 			local b = i == #self.points and self.points[1] or self.points[i + 1]
-			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 12)
+			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 1)
 			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, 12)
 		end
 		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, 12)
@@ -347,6 +355,29 @@ function class.particle:draw(p3d)
 	p3d:circfill(self.x, self.y, self.z, self.r, self.color)
 end
 
+class.star = object:extend()
+
+function class.star:new()
+	local angle = rnd(1)
+	self.x = 64 + 64 * cos(angle)
+	self.y = 64 + 64 * sin(angle)
+	self.z = .8 + rnd(.4)
+end
+
+function class.star:update(speed)
+	self.z += .001 * speed
+	if self.z >= 1.2 then
+		local angle = rnd(1)
+		self.x = 64 + 64 * cos(angle)
+		self.y = 64 + 64 * sin(angle)
+		self.z = .8
+	end
+end
+
+function class.star:draw(p3d)
+	p3d:circfill(self.x, self.y, self.z, 1, 1)
+end
+
 -->8
 -- gameplay state
 
@@ -360,6 +391,10 @@ function state.gameplay:enter()
 			50 * cos(angle),
 			50 * sin(angle)
 		)
+	end
+	self.stars = {}
+	for i = 1, 20 do
+		add(self.stars, class.star())
 	end
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, self.entities, 1))
@@ -399,6 +434,8 @@ function state.gameplay:update()
 		if entity.dead then del(self.entities, entity) end
 	end
 
+	-- cosmetic
+	for star in all(self.stars) do star:update(1) end
 	local target_hx = 64 + (self.player.x - 64) * 1/6
 	local target_hy = 64 + (self.player.y - 64) * 1/6
 	self.p3d.hx += (target_hx - self.p3d.hx) * .1
@@ -406,6 +443,7 @@ function state.gameplay:update()
 end
 
 function state.gameplay:draw()
+	for star in all(self.stars) do star:draw(self.p3d) end
 	self.web:draw(self.p3d)
 	for entity in all(self.entities) do
 		entity:draw(self.p3d)
