@@ -264,18 +264,44 @@ end
 
 class.flipper = object:extend()
 
-function class.flipper:new(web, position, z)
+class.flipper.speed = .0005
+class.flipper.flip_interval = 45
+class.flipper.flip_speed = 1/30
+
+function class.flipper:new(web, player, position, z)
 	self.web = web
+	self.player = player
 	self.position = position
 	self.z = z
+	self.flip_timer = self.flip_interval
+	self.flip_direction = 0
+	self.flip_progress = 0
+
+	-- cosmetic
 	self.r = 0
 end
 
 function class.flipper:update()
 	if self.z < 1 then
-		self.z += .00075
+		self.z += self.speed
+		if self.z > 1 then self.z = 1 end
 	end
-	self.r += .002
+	if self.flip_direction == 0 and self.z > self.web.min_z then
+		self.flip_timer -= 1
+		if self.flip_timer == 0 then
+			self.flip_timer += self.flip_interval
+			self.flip_direction = rnd(1) > .5 and 1 or -1
+			self.flip_progress = 0
+		end
+	end
+	if self.flip_direction ~= 0 then
+		self.flip_progress += self.flip_speed
+		self.position += self.flip_speed * self.flip_direction
+		self.r += self.flip_speed * self.flip_direction / 2
+		if self.flip_progress >= 1 then
+			self.flip_direction = 0
+		end
+	end
 end
 
 function class.flipper:collide(other)
@@ -296,8 +322,8 @@ function state.gameplay:enter()
 	self.web = class.web()
 	for angle = 0, 1 - 1/15, 1/15 do
 		self.web:add_point(
-			50 * cos(angle - .5),
-			-25 * (sin(angle) + sin(sqrt(angle)) + sin(angle * angle))
+			50 * cos(angle),
+			50 * sin(angle)
 		)
 	end
 	self.entities = {}
@@ -309,7 +335,7 @@ function state.gameplay:update()
 	self.spawn_timer -= 1/60
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
-		add(self.entities, class.flipper(self.web, flr(rnd(#self.web.points)), 0.75))
+		add(self.entities, class.flipper(self.web, self.player, flr(rnd(#self.web.points)), 0.75))
 	end
 	for entity in all(self.entities) do
 		entity:update()
