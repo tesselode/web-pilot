@@ -89,11 +89,13 @@ class.p3d = object:extend()
 function class.p3d:new()
 	self.hx = 64
 	self.hy = 64
+	self.oz = 0
 end
 
 function class.p3d:to2d(x, y, z)
 	x -= (self.hx - 64) / 3
 	y -= (self.hy - 64) / 3
+	z += self.oz
 	for i = 1, 4 do z *= z end
 	return self.hx + (x - self.hx) * z,
 	       self.hy + (y - self.hy) * z
@@ -220,6 +222,8 @@ class.physical = object:extend()
 class.player = class.physical:extend()
 
 class.player.reload_time = 6
+class.player.jump_power = .003
+class.player.gravity = .0001
 
 function class.player:new(web, entities, position)
 	self.web = web
@@ -227,14 +231,32 @@ function class.player:new(web, entities, position)
 	self.target_position = position
 	self.position = self.target_position
 	self.z = 1
+	self.vz = 0
+	self.jumping = false
 	self.reload_timer = 0
 end
 
 function class.player:update()
+	-- movement
 	if btnp(0) then self.target_position -= 1 end
 	if btnp(1) then self.target_position += 1 end
 	self.position += (self.target_position - self.position) * .33
 
+	-- jumping
+	if not self.jumping and btnp(5) then
+		self.jumping = true
+		self.vz = self.jump_power
+	end
+	if self.jumping then
+		self.vz -= self.gravity
+		self.z += self.vz
+		if self.z <= 1 then
+			self.z = 1
+			self.jumping = false
+		end
+	end
+
+	-- shooting
 	self.reload_timer -= 1
 	if self.reload_timer <= 0 and btn(4) then
 		self.reload_timer = self.reload_time
@@ -440,6 +462,7 @@ function state.gameplay:update()
 	local target_hy = 64 + (self.player.y - 64) * 1/6
 	self.p3d.hx += (target_hx - self.p3d.hx) * .1
 	self.p3d.hy += (target_hy - self.p3d.hy) * .1
+	self.p3d.oz = -(self.player.z - 1) / 3
 end
 
 function state.gameplay:draw()
