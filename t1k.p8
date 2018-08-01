@@ -9,6 +9,11 @@ local class = {}
 -->8
 -- utilities
 
+local function printc(text, x, y, col)
+	x -= #text * 2
+	print(text, x, y, col)
+end
+
 local state_manager = {}
 
 function state_manager:call(event, ...)
@@ -291,7 +296,8 @@ class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 class.flipper.drag_speed = .0005
 
-function class.flipper:new(web, entities, position, z, small)
+function class.flipper:new(p3d, web, entities, position, z, small)
+	self.p3d = p3d
 	self.web = web
 	self.entities = entities
 	self.position = position
@@ -349,6 +355,7 @@ function class.flipper:collide(other)
 			add(self.entities, class.particle(self.x, self.y, self.z, self.small and 15 or 14))
 		end
 		self.dead = true
+		add(self.entities, class.score_popup(self.small and '200' or '100', self.p3d:to2d(self.x, self.y, self.z)))
 	end
 end
 
@@ -409,6 +416,30 @@ function class.star:draw(p3d)
 	p3d:circfill(self.x, self.y, self.z, 1, 1)
 end
 
+class.score_popup = object:extend()
+
+function class.score_popup:new(text, x, y)
+	self.text = text
+	self.x = x
+	self.y = y
+	self.life = 40
+	self.vy = .5
+end
+
+function class.score_popup:update()
+	self.vy -= .01
+	self.y -= self.vy
+	self.life -= 1
+	if self.life <= 0 then
+		self.dead = true
+	end
+end
+
+function class.score_popup:draw()
+	local color = self.life / 15 % 1 < .5 and 12 or 7
+	printc(self.text, self.x, self.y, color)
+end
+
 -->8
 -- gameplay state
 
@@ -436,8 +467,8 @@ function state.gameplay:update()
 	self.spawn_timer -= 1/60
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
-		add(self.entities, class.flipper(self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
-		add(self.entities, class.flipper(self.web, self.entities, flr(rnd(#self.web.points)), 0.75, true))
+		add(self.entities, class.flipper(self.p3d, self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
+		add(self.entities, class.flipper(self.p3d, self.web, self.entities, flr(rnd(#self.web.points)), 0.75, true))
 	end
 	for entity in all(self.entities) do
 		entity:update()
