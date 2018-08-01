@@ -43,6 +43,16 @@ local compliments = {
 	'wonderful!',
 	'alright!',
 }
+local threats = {
+	"gotcha!",
+	"caught you!",
+	"you're mine now!",
+	"i've got you now!",
+	"come with me!",
+	"join us",
+	"you're coming with me!",
+	"say farewell",
+}
 
 -->8
 -- utilities
@@ -473,7 +483,7 @@ function class.flipper:collide(other)
 	if other:is(class.player) and (not other.caught) and self.z == 1 and self.flip_direction == 0 then
 		other.caught = self
 		self.dragging = other
-		sfx(sound.caught, 1)
+		conversation:say('player caught')
 	end
 	if other:is(class.player_bullet) then
 		self:die()
@@ -641,7 +651,11 @@ function state.gameplay:init_listeners()
 			freeze_frames += 4
 			screen_shake_frame += 3
 			sfx(sound.hit, 1)
-		end)
+		end),
+		conversation:listen('player caught', function()
+			self:show_message(threats[ceil(rnd(#threats))], 9)
+			sfx(sound.caught, 1)
+		end),
 	}
 end
 
@@ -660,13 +674,15 @@ function state.gameplay:enter()
 	self.message = ''
 	self.message_timer = 0
 	self.message_y = 64
+	self.message_color = 12
 	self:init_listeners()
 end
 
-function state.gameplay:show_message(message)
+function state.gameplay:show_message(message, color)
 	self.message = message
 	self.message_timer = 120
 	self.message_y = 80
+	self.message_color = color or 12
 end
 
 function state.gameplay:update()
@@ -772,7 +788,7 @@ function state.gameplay:draw()
 		printr('zapper online', 128, 122, color)
 	end
 	if self.message_timer > 0 then
-		local color = 12
+		local color = self.message_color
 		if (uptime / 30) % 1 > .5 then
 			color = 7
 		end
