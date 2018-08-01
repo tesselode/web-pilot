@@ -313,6 +313,14 @@ function class.player:new(web, position)
 	self.caught = false
 end
 
+function class.player:jump()
+	if not self.caught and not self.jumping then
+		self.jumping = true
+		self.vz = self.jump_power
+		sfx(sound.jump, 1)
+	end
+end
+
 function class.player:update()
 	if self.caught then
 		self.z = self.caught.z
@@ -328,11 +336,6 @@ function class.player:update()
 	self.position += self.velocity
 
 	-- jumping
-	if not self.jumping and btnp(5) then
-		self.jumping = true
-		self.vz = self.jump_power
-		sfx(sound.jump, 1)
-	end
 	if self.jumping then
 		self.vz -= self.gravity
 		self.z += self.vz
@@ -467,7 +470,7 @@ function class.flipper:die()
 end
 
 function class.flipper:collide(other)
-	if other:is(class.player) and self.z == 1 and self.flip_direction == 0 then
+	if other:is(class.player) and (not other.caught) and self.z == 1 and self.flip_direction == 0 then
 		other.caught = self
 		self.dragging = other
 		sfx(sound.caught, 1)
@@ -688,6 +691,7 @@ function state.gameplay:update()
 	end
 
 	-- input
+	if btnp(5) then self.player:jump() end
 	if btnp(5) and self.player.caught and self.zapper_online then
 		self.web:zap()
 		self.zapper_online = false
