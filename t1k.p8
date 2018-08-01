@@ -29,6 +29,20 @@ local screen_shake = {
 	{2, -2},
 }
 local screen_shake_frame = 1
+local compliments = {
+	'very good!',
+	'admirable!',
+	'excellent!',
+	'nice one!',
+	'good one!',
+	'good job!',
+	'nice catch!',
+	'choice!',
+	'awesome!',
+	'fantastic!',
+	'wonderful!',
+	'alright!',
+}
 
 -->8
 -- utilities
@@ -596,18 +610,31 @@ function state.gameplay:init_listeners()
 			for i = 1, 10 do
 				add(self.entities, class.particle(x, y, z, 12))
 			end
-			self.zapper_online = true
+			if not self.zapper_online then
+				self.zapper_online = true
+				self:show_message 'superzapper recharge'
+			else
+				self.powerup_streak += 1
+				self.score += self.powerup_streak * 10
+				add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
+				self:show_message(compliments[ceil(rnd(#compliments))])
+			end
 			sfx(sound.recharge, 1)
 		end),
 		conversation:listen('enemy killed', function(enemy)
-			self.enemies_killed += 1
-			if self.enemies_killed % 8 == 0 then
-				add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
+			if not self.web.zapping then
+				self.enemies_killed += 1
+				if self.enemies_killed % 8 == 0 then
+					add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
+				end
+			end
+			if not self.player.jumping then
+				self.score += (enemy.small and 2 or 1)
+				add(self.entities, class.score_popup(enemy.small and '200' or '100', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
 			end
 			for i = 1, 5 do
 				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.small and 15 or 14))
 			end
-			add(self.entities, class.score_popup(enemy.small and '200' or '100', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
 			freeze_frames += 4
 			screen_shake_frame += 3
 			sfx(sound.hit, 1)
@@ -621,11 +648,22 @@ function state.gameplay:enter()
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
 	self:init_stars()
-	self.spawn_timer = 1
-	self.difficulty = 1
-	self.enemies_killed = 0
+	self.score = 0
 	self.zapper_online = false
+	self.difficulty = 1
+	self.spawn_timer = 1
+	self.enemies_killed = 0
+	self.powerup_streak = 0
+	self.message = ''
+	self.message_timer = 0
+	self.message_y = 64
 	self:init_listeners()
+end
+
+function state.gameplay:show_message(message)
+	self.message = message
+	self.message_timer = 120
+	self.message_y = 80
 end
 
 function state.gameplay:update()
@@ -653,6 +691,7 @@ function state.gameplay:update()
 	if btnp(5) and self.player.caught and self.zapper_online then
 		self.web:zap()
 		self.zapper_online = false
+		self:show_message 'eat electric death!'
 	end
 
 	-- update web and entities
@@ -704,6 +743,12 @@ function state.gameplay:update()
 	self.p3d.hx += (target_hx - self.p3d.hx) * .1
 	self.p3d.hy += (target_hy - self.p3d.hy) * .1
 	self.p3d.oz = -(self.player.z - 1) / 3
+
+	-- message
+	if self.message_timer > 0 then
+		self.message_timer -= 1
+		self.message_y += (64 - self.message_y) * .1
+	end
 end
 
 function state.gameplay:draw()
@@ -720,7 +765,19 @@ function state.gameplay:draw()
 		if self.player.caught and (uptime / 30) % 1 > .5 then
 			color = 7
 		end
-		printr('zapper online', 128, 122, 12)
+		printr('zapper online', 128, 122, color)
+	end
+	if self.message_timer > 0 then
+		local color = 12
+		if (uptime / 30) % 1 > .5 then
+			color = 7
+		end
+		printc(self.message, 64, self.message_y, color)
+	end
+	if self.score == 0 then
+		printc('0', 64, 0, 7)
+	else
+		printc(self.score .. '00', 64, 0, 7)
 	end
 end
 
@@ -743,7 +800,7 @@ end
 function _draw()
 	cls()
 	state_manager:call 'draw'
-	print('cpu: ' .. flr(stat(1) * 200) .. '%', 0, 0, 7)
+	--print(flr(stat(1) * 200), 0, 0, 7)
 end
 __gfx__
 0000000000000cccccc0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
