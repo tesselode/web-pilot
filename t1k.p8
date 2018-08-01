@@ -319,12 +319,13 @@ class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 class.flipper.drag_speed = .0005
 
-function class.flipper:new(web, entities, position, z)
+function class.flipper:new(web, entities, position, z, small)
 	self.web = web
 	self.entities = entities
 	self.position = position
 	self.z = z
-	self.radius = 6
+	self.small = small
+	self.radius = small and 2 or 4
 	self.flip_timer = self.flip_interval
 	self.flip_direction = 0
 	self.flip_progress = 0
@@ -346,9 +347,9 @@ function class.flipper:update()
 	end
 	if self.flip_direction == 0 and self.z > self.web.min_z then
 		if self.z == 1 then
-			self.flip_timer -= 2
+			self.flip_timer -= (self.small and 4 or 2)
 		else
-			self.flip_timer -= 1
+			self.flip_timer -= (self.small and 2 or 1)
 		end
 		if self.flip_timer <= 0 then
 			self.flip_timer += self.flip_interval
@@ -357,9 +358,9 @@ function class.flipper:update()
 		end
 	end
 	if self.flip_direction ~= 0 then
-		self.flip_progress += self.flip_speed
-		self.position += self.flip_speed * self.flip_direction
-		self.r += self.flip_speed * self.flip_direction / 2
+		self.flip_progress += self.flip_speed * (self.small and 2 or 1)
+		self.position += self.flip_speed * self.flip_direction * (self.small and 2 or 1)
+		self.r += self.flip_speed * self.flip_direction / 2 * (self.small and 2 or 1)
 		if self.flip_progress >= 1 then
 			self.flip_direction = 0
 		end
@@ -373,14 +374,16 @@ function class.flipper:collide(other)
 	end
 	if other:is(class.player_bullet) then
 		for i = 1, 5 do
-			add(self.entities, class.particle(self.x, self.y, self.z, 14))
+			add(self.entities, class.particle(self.x, self.y, self.z, self.small and 15 or 14))
 		end
 		self.dead = true
 	end
 end
 
 function class.flipper:draw(p3d)
-	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, 6, 6, 1, 14)
+	local color = self.small and 15 or 14
+	local scale = self.small and 3 or 6
+	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, color)
 end
 
 class.particle = object:extend()
@@ -462,6 +465,7 @@ function state.gameplay:update()
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
 		add(self.entities, class.flipper(self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
+		add(self.entities, class.flipper(self.web, self.entities, flr(rnd(#self.web.points)), 0.75, true))
 	end
 	for entity in all(self.entities) do
 		entity:update()
