@@ -3,6 +3,7 @@ version 16
 __lua__
 -- resources
 
+local uptime = 0
 local state = {}
 local class = {}
 local sound = {
@@ -13,6 +14,7 @@ local sound = {
 	flip_small = 12,
 	caught = 13,
 	spawn = 14,
+	recharge = 15,
 }
 local freeze_frames = 0
 local screen_shake = {
@@ -36,6 +38,11 @@ local function printc(text, x, y, col)
 	print(text, x, y, col)
 end
 
+local function printr(text, x, y, col)
+	x -= #text * 4
+	print(text, x, y, col)
+end
+
 local state_manager = {}
 
 function state_manager:call(event, ...)
@@ -48,6 +55,26 @@ function state_manager:switch(state, ...)
 	self:call 'leave'
 	self.current_state = state
 	self:call('enter', ...)
+end
+
+local conversation = {_listeners = {}}
+
+function conversation:listen(message, f)
+	local listener = {message = message, f = f}
+	self._listeners[listener] = true
+	return listener
+end
+
+function conversation:say(message, ...)
+	for listener, _ in pairs(self._listeners) do
+		if listener.message == message then
+			listener.f(...)
+		end
+	end
+end
+
+function conversation:deafen(listener)
+	self._listeners[listener] = nil
 end
 
 --
@@ -126,6 +153,15 @@ function class.p3d:circfill(x, y, z, r, col)
 	circfill(x, y, r * z * z, col)
 end
 
+function class.p3d:sspr(sx, sy, sw, sh, x, y, z)
+	x, y = self:to2d(x, y, z)
+	for i = 1, 4 do z *= z end
+	local w, h = sw * z, sh * z
+	x -= w/2
+	y -= h/2
+	sspr(sx, sy, sw, sh, x, y, w, h)
+end
+
 -->8
 -- classes
 
@@ -188,10 +224,12 @@ class.web = object:extend()
 
 class.web.min_z = .9
 class.web.max_z = 1.01
+class.web.zap_speed = .002
 
 function class.web:new()
 	self.points = {}
 	self.closed = true
+	self.zapping = false
 end
 
 function class.web:add_point(x, y)
@@ -211,6 +249,19 @@ function class.web:get_position(position)
 	       a.y + (b.y - a.y) * fraction
 end
 
+function class.web:zap()
+	self.zapping = self.max_z
+end
+
+function class.web:update()
+	if self.zapping then
+		self.zapping -= self.zap_speed
+		if self.zapping < self.min_z then
+			self.zapping = false
+		end
+	end
+end
+
 function class.web:draw(p3d, color)
 	for i = 1, #self.points do
 		local a = self.points[i]
@@ -218,6 +269,9 @@ function class.web:draw(p3d, color)
 			local b = i == #self.points and self.points[1] or self.points[i + 1]
 			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, color)
 			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, color)
+			if self.zapping then
+				p3d:line(a.x, a.y, self.zapping, b.x, b.y, self.zapping, 7)
+			end
 		end
 		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, color)
 	end
@@ -234,9 +288,8 @@ class.player.reload_time = 6
 class.player.jump_power = .003
 class.player.gravity = .0001
 
-function class.player:new(web, entities, position)
+function class.player:new(web, position)
 	self.web = web
-	self.entities = entities
 	self.position = position
 	self.velocity = 0
 	self.z = 1
@@ -250,6 +303,8 @@ function class.player:update()
 	if self.caught then
 		self.z = self.caught.z
 		return
+	elseif self.z < 1 then
+		self.z += (1 - self.z) * .1
 	end
 
 	-- movement
@@ -277,8 +332,14 @@ function class.player:update()
 	self.reload_timer -= 1
 	if self.reload_timer <= 0 and btn(4) then
 		self.reload_timer = self.reload_time
-		add(self.entities, class.player_bullet(self.web, self.position, self.z))
-		sfx(sound.shoot, 0)
+		conversation:say('player shot', self.position, self.z)
+	end
+end
+
+function class.player:collide(other)
+	if other:is(class.powerup) then
+		other.dead = true
+		conversation:say('powerup collected', self.x, self.y, self.z)
 	end
 end
 
@@ -320,10 +381,9 @@ class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 class.flipper.drag_speed = .0005
 
-function class.flipper:new(p3d, web, entities, position, z, small)
+function class.flipper:new(p3d, web, position, z, small)
 	self.p3d = p3d
 	self.web = web
-	self.entities = entities
 	self.position = position + .5
 	self.z = z
 	self.small = small
@@ -372,6 +432,12 @@ function class.flipper:update()
 	end
 end
 
+function class.flipper:die()
+	self.dead = true
+	if self.dragging then self.dragging.caught = false end
+	conversation:say('enemy killed', self)
+end
+
 function class.flipper:collide(other)
 	if other:is(class.player) and self.z == 1 and self.flip_direction == 0 then
 		other.caught = self
@@ -379,15 +445,7 @@ function class.flipper:collide(other)
 		sfx(sound.caught, 1)
 	end
 	if other:is(class.player_bullet) then
-		self.dead = true
-		if self.dragging then self.dragging.caught = false end
-		for i = 1, 5 do
-			add(self.entities, class.particle(self.x, self.y, self.z, self.small and 15 or 14))
-		end
-		add(self.entities, class.score_popup(self.small and '200' or '100', self.p3d:to2d(self.x, self.y, self.z)))
-		freeze_frames += 4
-		screen_shake_frame += 3
-		sfx(sound.hit, 1)
+		self:die()
 	end
 end
 
@@ -395,6 +453,26 @@ function class.flipper:draw(p3d)
 	local color = self.small and 15 or 14
 	local scale = self.small and 3 or 6
 	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, color)
+end
+
+class.powerup = class.physical:extend()
+
+class.powerup.speed = .0005
+class.powerup.radius = 8
+
+function class.powerup:new(x, y, z)
+	self.x = x
+	self.y = y
+	self.z = z
+end
+
+function class.powerup:update()
+	self.z += self.speed
+	if self.z > 1.1 then self.dead = true end
+end
+
+function class.powerup:draw(p3d)
+	p3d:sspr(8, 0, 16, 16, self.x, self.y, self.z)
 end
 
 class.particle = object:extend()
@@ -477,8 +555,7 @@ end
 
 state.gameplay = {}
 
-function state.gameplay:enter()
-	self.p3d = class.p3d()
+function state.gameplay:init_web()
 	self.web = class.web()
 	for angle = 0, 1 - 1/15, 1/15 do
 		self.web:add_point(
@@ -486,17 +563,60 @@ function state.gameplay:enter()
 			50 * sin(angle + .1)
 		)
 	end
+end
+
+function state.gameplay:init_stars()
 	self.stars = {}
 	for i = 1, 20 do
 		add(self.stars, class.star())
 	end
+end
+
+function state.gameplay:init_listeners()
+	self.listeners = {
+		conversation:listen('player shot', function(position, z)
+			add(self.entities, class.player_bullet(self.web, position, z))
+			sfx(sound.shoot, 0)
+		end),
+		conversation:listen('powerup collected', function(x, y, z)
+			for i = 1, 10 do
+				add(self.entities, class.particle(x, y, z, 12))
+			end
+			self.zapper_online = true
+			sfx(sound.recharge, 1)
+		end),
+		conversation:listen('enemy killed', function(enemy)
+			self.enemies_killed += 1
+			if self.enemies_killed % 8 == 0 then
+				add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
+			end
+			for i = 1, 5 do
+				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.small and 15 or 14))
+			end
+			add(self.entities, class.score_popup(enemy.small and '200' or '100', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
+			freeze_frames += 4
+			screen_shake_frame += 3
+			sfx(sound.hit, 1)
+		end)
+	}
+end
+
+function state.gameplay:enter()
+	self.p3d = class.p3d()
+	self:init_web()
 	self.entities = {}
-	self.player = add(self.entities, class.player(self.web, self.entities, 1))
+	self.player = add(self.entities, class.player(self.web, 1))
+	self:init_stars()
 	self.spawn_timer = 1
 	self.spawn_multiplier = 1
+	self.enemies_killed = 0
+	self.zapper_online = false
+	self:init_listeners()
 end
 
 function state.gameplay:update()
+	-- game feel
+	if freeze_frames > 8 then freeze_frames = 8 end
 	if freeze_frames > 0 then
 		freeze_frames -= 1
 		return
@@ -505,20 +625,41 @@ function state.gameplay:update()
 		screen_shake_frame -= 1
 	end
 
+	-- spawns
 	self.spawn_multiplier += .00025
 	self.spawn_timer -= 1/120 * self.spawn_multiplier
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
-		add(self.entities, class.flipper(self.p3d, self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
-		add(self.entities, class.flipper(self.p3d, self.web, self.entities, flr(rnd(#self.web.points)), 0.75, true))
+		add(self.entities, class.flipper(self.p3d, self.web, flr(rnd(#self.web.points)), 0.75))
+		add(self.entities, class.flipper(self.p3d, self.web, flr(rnd(#self.web.points)), 0.75, true))
 		sfx(sound.spawn, 3)
 	end
+
+	-- input
+	if btnp(5) and self.player.caught and self.zapper_online then
+		self.web:zap()
+		self.zapper_online = false
+	end
+
+	-- update web and entities
+	self.web:update()
 	for entity in all(self.entities) do
 		entity:update()
-		if entity:is(class.physical) then
+		if entity:is(class.physical) and entity.position then
 			entity.x, entity.y = self.web:get_position(entity.position)
 		end
 	end
+
+	-- zapper
+	if self.web.zapping then
+		for entity in all(self.entities) do
+			if entity:is(class.flipper) and abs(entity.z - self.web.zapping) < .01 then
+				entity:die()
+			end
+		end
+	end
+
+	-- process collisions
 	for i = 1, #self.entities - 1 do
 		local entity = self.entities[i]
 		if entity:is(class.physical) then
@@ -536,6 +677,8 @@ function state.gameplay:update()
 			end
 		end
 	end
+
+	-- remove entities
 	for entity in all(self.entities) do
 		if entity.dead then del(self.entities, entity) end
 	end
@@ -558,6 +701,13 @@ function state.gameplay:draw()
 		entity:draw(self.p3d)
 	end
 	camera()
+	if self.zapper_online then
+		local color = 12
+		if self.player.caught and (uptime / 30) % 1 > .5 then
+			color = 7
+		end
+		printr('zapper online', 128, 122, 12)
+	end
 end
 
 local function apply_audio_effects()
@@ -572,6 +722,7 @@ function _init()
 end
 
 function _update60()
+	uptime += 1
 	state_manager:call 'update'
 end
 
@@ -580,6 +731,23 @@ function _draw()
 	state_manager:call 'draw'
 	print('cpu: ' .. flr(stat(1) * 200) .. '%', 0, 0, 7)
 end
+__gfx__
+00000000000001111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000001cccccc1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+007007000001cccccccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000001cccccccccc10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0007700001ccccc77ccccc1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+007007001ccccce77eccccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001ccccee77eecccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001ccc77777777ccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001ccc77777777ccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001ccccee77eecccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001ccccce77eccccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000001ccccc77ccccc1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000001cccccccccc10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000001cccccccc100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000001cccccc1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000001111110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
 000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
