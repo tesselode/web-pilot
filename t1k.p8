@@ -50,16 +50,6 @@ function object:extend()
 	return cls
 end
 
-function object:implement(...)
-	for _, cls in pairs({...}) do
-		for k, v in pairs(cls) do
-			if self[k] == nil and type(v) == "function" then
-				self[k] = v
-			end
-		end
-	end
-end
-
 function object:is(T)
 	local mt = getmetatable(self)
 	while mt do
@@ -69,10 +59,6 @@ function object:is(T)
 		mt = getmetatable(mt)
 	end
 	return false
-end
-
-function object:__tostring()
-	return "object"
 end
 
 function object:__call(...)
@@ -101,24 +87,10 @@ function class.p3d:to2d(x, y, z)
 	       self.hy + (y - self.hy) * z
 end
 
-function class.p3d:get_color(color, z)
-	if color == 14 then
-		if z < .95 then color = 13 end
-		if z < .925 then color = 2 end
-	end
-	return color
-end
-
 function class.p3d:line(x1, y1, z1, x2, y2, z2, col)
 	local x1, y1 = self:to2d(x1, y1, z1)
 	local x2, y2 = self:to2d(x2, y2, z2)
 	line(x1, y1, x2, y2, col)
-end
-
-function class.p3d:circ(x, y, z, r, col)
-	local x, y = self:to2d(x, y, z)
-	for i = 1, 4 do z *= z end
-	circ(x, y, r * z * z, col)
 end
 
 function class.p3d:circfill(x, y, z, r, col)
