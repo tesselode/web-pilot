@@ -5,6 +5,19 @@ __lua__
 
 local state = {}
 local class = {}
+local freeze_frames = 0
+local screen_shake = {
+	{0, 0},
+	{-1, -1},
+	{1, 1},
+	{-1, 1},
+	{1, -1},
+	{-2, -2},
+	{2, 2},
+	{-2, 2},
+	{2, -2},
+}
+local screen_shake_frame = 1
 
 -->8
 -- utilities
@@ -353,12 +366,14 @@ function class.flipper:collide(other)
 		self.dragging = other
 	end
 	if other:is(class.player_bullet) then
+		self.dead = true
+		if self.dragging then self.dragging.caught = false end
 		for i = 1, 5 do
 			add(self.entities, class.particle(self.x, self.y, self.z, self.small and 15 or 14))
 		end
-		self.dead = true
-		if self.dragging then self.dragging.caught = false end
 		add(self.entities, class.score_popup(self.small and '200' or '100', self.p3d:to2d(self.x, self.y, self.z)))
+		freeze_frames += 4
+		screen_shake_frame += 3
 	end
 end
 
@@ -464,10 +479,20 @@ function state.gameplay:enter()
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, self.entities, 1))
 	self.spawn_timer = 1
+	self.spawn_multiplier = 1
 end
 
 function state.gameplay:update()
-	self.spawn_timer -= 1/120
+	if freeze_frames > 0 then
+		freeze_frames -= 1
+		return
+	end
+	if screen_shake_frame > 1 then
+		screen_shake_frame -= 1
+	end
+
+	self.spawn_multiplier += .00025
+	self.spawn_timer -= 1/120 * self.spawn_multiplier
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
 		add(self.entities, class.flipper(self.p3d, self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
@@ -510,11 +535,14 @@ function state.gameplay:update()
 end
 
 function state.gameplay:draw()
+	local shake = screen_shake[max(screen_shake_frame, #screen_shake)]
+	camera(shake[1], shake[2])
 	for star in all(self.stars) do star:draw(self.p3d) end
 	self.web:draw(self.p3d, self.player.caught and 8 or 3)
 	for entity in all(self.entities) do
 		entity:draw(self.p3d)
 	end
+	camera()
 end
 
 function _init()
@@ -530,11 +558,3 @@ function _draw()
 	state_manager:call 'draw'
 	print('cpu: ' .. flr(stat(1) * 200) .. '%', 0, 0, 7)
 end
-__gfx__
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000566657705777577757575777577757775777577700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700565605700057005757575700570000575757575700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000565605700577057757775770577000575777575700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000565605705770005700570577575705705757057700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700565605705700005700570057575705705757005700000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000566657775777577700575777577705705777005700000000000000000000000000000000000000000000000000000000000000000000000000000000
