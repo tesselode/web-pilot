@@ -212,15 +212,15 @@ function class.web:get_position(position)
 	       a.y + (b.y - a.y) * fraction
 end
 
-function class.web:draw(p3d)
+function class.web:draw(p3d, color)
 	for i = 1, #self.points do
 		local a = self.points[i]
 		if self.closed or i < #self.points then
 			local b = i == #self.points and self.points[1] or self.points[i + 1]
-			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, 12)
-			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, 12)
+			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, color)
+			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, color)
 		end
-		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, 12)
+		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, color)
 	end
 end
 
@@ -243,9 +243,15 @@ function class.player:new(web, entities, position)
 	self.vz = 0
 	self.jumping = false
 	self.reload_timer = 0
+	self.caught = false
 end
 
 function class.player:update()
+	if self.caught then
+		self.z = self.caught.z
+		return
+	end
+
 	-- movement
 	if btn(0) then self.velocity -= self.acceleration end
 	if btn(1) then self.velocity += self.acceleration end
@@ -309,6 +315,7 @@ class.flipper = class.physical:extend()
 class.flipper.speed = .0005
 class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
+class.flipper.drag_speed = .0005
 
 function class.flipper:new(web, entities, position, z)
 	self.web = web
@@ -318,19 +325,29 @@ function class.flipper:new(web, entities, position, z)
 	self.flip_timer = self.flip_interval
 	self.flip_direction = 0
 	self.flip_progress = 0
+	self.dragging = false
 
 	-- cosmetic
 	self.r = 0
 end
 
 function class.flipper:update()
+	if self.dragging then
+		self.z -= self.drag_speed
+		return
+	end
+
 	if self.z < 1 then
 		self.z += self.speed
 		if self.z > 1 then self.z = 1 end
 	end
 	if self.flip_direction == 0 and self.z > self.web.min_z then
-		self.flip_timer -= 1
-		if self.flip_timer == 0 then
+		if self.z == 1 then
+			self.flip_timer -= 2
+		else
+			self.flip_timer -= 1
+		end
+		if self.flip_timer <= 0 then
 			self.flip_timer += self.flip_interval
 			self.flip_direction = rnd(1) > .5 and 1 or -1
 			self.flip_progress = 0
@@ -347,6 +364,10 @@ function class.flipper:update()
 end
 
 function class.flipper:collide(other)
+	if other:is(class.player) and self.z == 1 and self.flip_direction == 0 then
+		other.caught = self
+		self.dragging = true
+	end
 	if other:is(class.player_bullet) then
 		for i = 1, 5 do
 			add(self.entities, class.particle(self.x, self.y, self.z, 14))
@@ -421,7 +442,7 @@ function state.gameplay:enter()
 	for angle = 0, 1 - 1/15, 1/15 do
 		self.web:add_point(
 			50 * cos(angle),
-			50 * sin(angle)
+			50 * sin(angle + .1)
 		)
 	end
 	self.stars = {}
@@ -477,7 +498,7 @@ end
 
 function state.gameplay:draw()
 	for star in all(self.stars) do star:draw(self.p3d) end
-	self.web:draw(self.p3d)
+	self.web:draw(self.p3d, self.player.caught and 8 or 12)
 	for entity in all(self.entities) do
 		entity:draw(self.p3d)
 	end
