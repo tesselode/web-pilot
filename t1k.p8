@@ -115,8 +115,15 @@ function class.p3d:line(x1, y1, z1, x2, y2, z2, col)
 	line(x1, y1, x2, y2, col)
 end
 
+function class.p3d:circ(x, y, z, r, col)
+	local x, y = self:to2d(x, y, z)
+	for i = 1, 4 do z *= z end
+	circ(x, y, r * z * z, col)
+end
+
 function class.p3d:circfill(x, y, z, r, col)
 	local x, y = self:to2d(x, y, z)
+	for i = 1, 4 do z *= z end
 	circfill(x, y, r * z * z, col)
 end
 
@@ -221,6 +228,8 @@ class.physical = object:extend()
 
 class.player = class.physical:extend()
 
+class.player.acceleration = .01
+class.player.friction = .05
 class.player.reload_time = 6
 class.player.jump_power = .003
 class.player.gravity = .0001
@@ -228,8 +237,8 @@ class.player.gravity = .0001
 function class.player:new(web, entities, position)
 	self.web = web
 	self.entities = entities
-	self.target_position = position
-	self.position = self.target_position
+	self.position = position
+	self.velocity = 0
 	self.z = 1
 	self.vz = 0
 	self.jumping = false
@@ -238,9 +247,10 @@ end
 
 function class.player:update()
 	-- movement
-	if btnp(0) then self.target_position -= 1 end
-	if btnp(1) then self.target_position += 1 end
-	self.position += (self.target_position - self.position) * .33
+	if btn(0) then self.velocity -= self.acceleration end
+	if btn(1) then self.velocity += self.acceleration end
+	self.velocity -= self.velocity * self.friction
+	self.position += self.velocity
 
 	-- jumping
 	if not self.jumping and btnp(5) then
@@ -291,7 +301,7 @@ function class.player_bullet:collide(other)
 end
 
 function class.player_bullet:draw(p3d)
-	p3d:circfill(self.x, self.y, self.z, 2, 10)
+	p3d:circfill(self.x, self.y, self.z, 3, 10)
 end
 
 class.flipper = class.physical:extend()
@@ -367,7 +377,7 @@ function class.particle:update()
 	if self.life == 0 then
 		self.dead = true
 	end
-	self.speed -= .05
+	self.speed -= .1
 	self.r -= .1
 	self.x += self.speed * cos(self.direction)
 	self.y += self.speed * sin(self.direction)
