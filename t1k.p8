@@ -259,18 +259,18 @@ function class.player:update()
 end
 
 function class.player:draw(p3d)
-	local r = atan2(self.x - 64, self.y - 64)
+	local r = atan2(self.x - 64, self.y - 64) + self.velocity * (2/3)
 	model.player:draw(p3d, self.x, self.y, self.z, r, 8, 8, 1, 10)
 end
 
 class.player_bullet = class.physical:extend()
 
-class.player_bullet.radius = 3
-class.player_bullet.speed = .0025
+class.player_bullet.radius = 1
+class.player_bullet.speed = .005
 
 function class.player_bullet:new(web, position, z)
 	self.web = web
-	self.position = position
+	self.position = flr(position) + .5
 	self.z = z
 end
 
@@ -286,7 +286,7 @@ function class.player_bullet:collide(other)
 end
 
 function class.player_bullet:draw(p3d)
-	p3d:circfill(self.x, self.y, self.z, 3, 10)
+	p3d:line(self.x, self.y, self.z, self.x, self.y, self.z + .01, 10)
 end
 
 class.flipper = class.physical:extend()
@@ -300,7 +300,7 @@ function class.flipper:new(p3d, web, entities, position, z, small)
 	self.p3d = p3d
 	self.web = web
 	self.entities = entities
-	self.position = position
+	self.position = position + .5
 	self.z = z
 	self.small = small
 	self.radius = small and 2 or 4
@@ -319,7 +319,9 @@ function class.flipper:update()
 		return
 	end
 
-	if self.z < 1 then
+	if self.z < self.web.min_z then
+		self.z += self.speed * 3
+	elseif self.z < 1 then
 		self.z += self.speed
 		if self.z > 1 then self.z = 1 end
 	end
@@ -336,8 +338,8 @@ function class.flipper:update()
 		end
 	end
 	if self.flip_direction ~= 0 then
-		self.flip_progress += self.flip_speed * (self.small and 2 or 1)
-		self.position += self.flip_speed * self.flip_direction * (self.small and 2 or 1)
+		self.flip_progress += self.flip_speed
+		self.position += self.flip_speed * self.flip_direction * (self.small and .5 or 1)
 		self.r += self.flip_speed * self.flip_direction / 2 * (self.small and 2 or 1)
 		if self.flip_progress >= 1 then
 			self.flip_direction = 0
@@ -348,13 +350,14 @@ end
 function class.flipper:collide(other)
 	if other:is(class.player) and self.z == 1 and self.flip_direction == 0 then
 		other.caught = self
-		self.dragging = true
+		self.dragging = other
 	end
 	if other:is(class.player_bullet) then
 		for i = 1, 5 do
 			add(self.entities, class.particle(self.x, self.y, self.z, self.small and 15 or 14))
 		end
 		self.dead = true
+		if self.dragging then self.dragging.caught = false end
 		add(self.entities, class.score_popup(self.small and '200' or '100', self.p3d:to2d(self.x, self.y, self.z)))
 	end
 end
@@ -464,7 +467,7 @@ function state.gameplay:enter()
 end
 
 function state.gameplay:update()
-	self.spawn_timer -= 1/60
+	self.spawn_timer -= 1/120
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
 		add(self.entities, class.flipper(self.p3d, self.web, self.entities, flr(rnd(#self.web.points)), 0.75))
@@ -508,7 +511,7 @@ end
 
 function state.gameplay:draw()
 	for star in all(self.stars) do star:draw(self.p3d) end
-	self.web:draw(self.p3d, self.player.caught and 8 or 12)
+	self.web:draw(self.p3d, self.player.caught and 8 or 3)
 	for entity in all(self.entities) do
 		entity:draw(self.p3d)
 	end
