@@ -228,6 +228,7 @@ class.physical = object:extend()
 
 class.player = class.physical:extend()
 
+class.player.radius = 4
 class.player.acceleration = .01
 class.player.friction = .05
 class.player.reload_time = 6
@@ -287,6 +288,7 @@ end
 
 class.player_bullet = class.physical:extend()
 
+class.player_bullet.radius = 3
 class.player_bullet.speed = .0025
 
 function class.player_bullet:new(web, position, z)
@@ -322,6 +324,7 @@ function class.flipper:new(web, entities, position, z)
 	self.entities = entities
 	self.position = position
 	self.z = z
+	self.radius = 6
 	self.flip_timer = self.flip_interval
 	self.flip_direction = 0
 	self.flip_progress = 0
@@ -387,7 +390,7 @@ function class.particle:new(x, y, z, color)
 	self.y = y
 	self.z = z
 	self.color = color
-	self.r = 2
+	self.r = 4
 	self.direction = rnd(1)
 	self.speed = 2 + rnd(2)
 	self.life = 30
@@ -472,8 +475,8 @@ function state.gameplay:update()
 			for j = i + 1, #self.entities do
 				local other = self.entities[j]
 				if other:is(class.physical) then
-					local colliding = abs(other.x - entity.x) < 8
-								and abs(other.y - entity.y) < 8
+					local distance = (other.x - entity.x) * (other.x - entity.x) + (other.y - entity.y) * (other.y - entity.y)
+					local colliding = distance < (other.radius + entity.radius) * (other.radius + entity.radius)
 								and abs(other.z - entity.z) < .01
 					if colliding then
 						if entity.collide then entity:collide(other) end
