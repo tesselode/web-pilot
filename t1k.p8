@@ -381,9 +381,10 @@ class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 class.flipper.drag_speed = .0005
 
-function class.flipper:new(p3d, web, position, z, small)
+function class.flipper:new(p3d, web, player, position, z, small)
 	self.p3d = p3d
 	self.web = web
+	self.player = player
 	self.position = position + .5
 	self.z = z
 	self.small = small
@@ -417,7 +418,19 @@ function class.flipper:update()
 		end
 		if self.flip_timer <= 0 then
 			self.flip_timer += self.flip_interval
-			self.flip_direction = rnd(1) > .5 and 1 or -1
+			if self.z == 1 then
+				local p_a = self.position % #self.web.points
+				local p_b = self.player.position % #self.web.points
+				local distance_a = abs(p_a - p_b)
+				local distance_b = abs(#self.web.points - p_a) + p_b
+				if distance_b < distance_a then
+					self.flip_direction = sgn(p_a - p_b)
+				else
+					self.flip_direction = -sgn(p_a - p_b)
+				end
+			else
+				self.flip_direction = rnd(1) > .5 and 1 or -1
+			end
 			self.flip_progress = 0
 		end
 	end
@@ -630,8 +643,8 @@ function state.gameplay:update()
 	self.spawn_timer -= 1/120 * self.spawn_multiplier
 	while self.spawn_timer <= 0 do
 		self.spawn_timer += 1
-		add(self.entities, class.flipper(self.p3d, self.web, flr(rnd(#self.web.points)), 0.75))
-		add(self.entities, class.flipper(self.p3d, self.web, flr(rnd(#self.web.points)), 0.75, true))
+		add(self.entities, class.flipper(self.p3d, self.web, self.player, flr(rnd(#self.web.points)), 0.75))
+		add(self.entities, class.flipper(self.p3d, self.web, self.player, flr(rnd(#self.web.points)), 0.75, true))
 		sfx(sound.spawn, 3)
 	end
 
