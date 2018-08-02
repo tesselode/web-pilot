@@ -19,6 +19,7 @@ local sound = {
 	thwomp_arrived = 17,
 	thwomp_stomped = 18,
 	thwomp_hit = 19,
+	rim_kill = 20,
 }
 local freeze_frames = 0
 local screen_shake = {
@@ -478,7 +479,7 @@ class.flipper = class.enemy:extend()
 class.flipper.speed = .0005
 class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
-class.flipper.drag_speed = .0005
+class.flipper.drag_speed = .00025
 
 function class.flipper:new(p3d, web, player, difficulty, small)
 	self.p3d = p3d
@@ -581,8 +582,9 @@ class.thwomp.starting_health = 20
 class.thwomp.point_value = 10
 class.thwomp.color = 8
 
-function class.thwomp:new(web)
+function class.thwomp:new(web, difficulty)
 	self.web = web
+	self.difficulty = difficulty
 	self.position = flr(rnd(#self.web.points)) + .5
 	self.h = 0
 	self.z = .75
@@ -616,7 +618,7 @@ function class.thwomp:update()
 			conversation:say 'thwomp landed'
 		end
 	else
-		self.jump_timer -= 1
+		self.jump_timer -= self.difficulty / 2
 		if self.jump_timer <= 0 then
 			self.jump_timer += self.min_jump_interval + rnd(self.max_jump_interval - self.min_jump_interval)
 			self.jumping = true
@@ -795,21 +797,30 @@ function state.gameplay:init_listeners()
 				self.powerup_streak += 1
 				self.score += self.powerup_streak * 10
 				add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
-				self:show_message(compliments[ceil(rnd(#compliments))])
+				local message = compliments[ceil(rnd(#compliments))]
+				message = message .. ' +' .. self.powerup_streak .. '000'
+				self:show_message(message)
 				sfx(sound.bonus, 1)
 			end
 		end),
 		conversation:listen('enemy killed', function(enemy)
 			if not self.web.zapping then
-				self.enemies_killed += 1
-				if self.enemies_killed % 8 == 0 then
+				self.to_next_powerup -= 1
+				if self.to_next_powerup == 0 then
+					self.to_next_powerup = 7 + self.powerup_streak
 					add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
 				end
 			end
-			if not self.player.jumping then
-				self.score += enemy.point_value
-				add(self.entities, class.score_popup(enemy.point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
+			if not self.player.jumping and not self.web.zapping then
+				local point_value = enemy.point_value
+				if enemy.z == 1 then
+					point_value *= 2
+					sfx(sound.rim_kill, 1)
+				end
+				self.score += point_value
+				add(self.entities, class.score_popup(point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
 			end
+			if enemy:is(class.thwomp) then self.difficulty += .1 end
 			for i = 1, 5 do
 				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
 			end
@@ -833,13 +844,17 @@ function state.gameplay:enter()
 	self:init_web()
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
-	add(self.entities, class.thwomp(self.web))
 	self:init_stars()
 	self.score = 0
 	self.zapper_online = false
 	self.difficulty = 1
+	self.timer = {
+		flipper = 60 + rnd(60),
+		small_flipper = 2400 + rnd(600),
+		thwomp = 5400 + rnd(900),
+	}
 	self.spawn_timer = 1
-	self.enemies_killed = 0
+	self.to_next_powerup = 3
 	self.powerup_streak = 0
 	self.message = ''
 	self.message_timer = 0
@@ -868,11 +883,25 @@ function state.gameplay:update()
 
 	-- spawns
 	self.difficulty += .00025
-	self.spawn_timer -= 1/120 * self.difficulty
-	while self.spawn_timer <= 0 do
-		self.spawn_timer += 1
+	self.timer.flipper -= self.difficulty
+	while self.timer.flipper <= 0 do
+		self.timer.flipper += 90 + rnd(60)
 		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+		sfx(sound.spawn, 3)
+	end
+
+	self.timer.small_flipper -= self.difficulty * self.difficulty
+	while self.timer.small_flipper <= 0 do
+		self.timer.small_flipper += 300 + rnd(300)
 		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+		sfx(sound.spawn, 3)
+	end
+
+	self.timer.thwomp -= self.difficulty
+	while self.timer.thwomp <= 0 do
+		self.timer.thwomp += 1500 + rnd(600)
+		add(self.entities, class.thwomp(self.web, self.difficulty))
+		self.difficulty -= .1
 		sfx(sound.spawn, 3)
 	end
 
@@ -881,6 +910,9 @@ function state.gameplay:update()
 	if btnp(5) and self.player.caught and self.zapper_online then
 		self.web:zap()
 		self.zapper_online = false
+		self.difficulty -= 1/3 / self.difficulty
+		if self.difficulty < 1 then self.difficulty = 1 end
+		self.powerup_streak = 0
 		self:show_message 'eat electric death!'
 	end
 
@@ -896,7 +928,7 @@ function state.gameplay:update()
 	-- zapper
 	if self.web.zapping then
 		for entity in all(self.entities) do
-			if entity:is(class.enemy) and abs(entity.z - self.web.zapping) < .01 then
+			if entity:is(class.enemy) and abs(entity.z - self.web.zapping) < .01 and not (entity.h and entity.h > 0) then
 				entity:die()
 			end
 		end
@@ -969,6 +1001,8 @@ function state.gameplay:draw()
 	else
 		printoc(self.score .. '00', 64, 0, 7)
 	end
+
+	print(self.difficulty, 0, 0, 5)
 end
 
 local function apply_audio_effects()
@@ -1030,3 +1064,4 @@ __sfx__
 010b00000301203022031320314203252032520336203362034720347203362033620325203252031420313203022030120000200002000020000200002000020000200002000020000200002000000000000000
 014000000c17300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 010900003f33200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0105000036045380453d0451800018000180001800018000180001800018000180001800018000180001800018000180001800018000180001800018000180001800018000180001800018000180001800000000
