@@ -625,9 +625,9 @@ function class.thwomp:update()
 			self.jumping = true
 			self.vh = self.jump_power
 			self.vp = -.1 + rnd(.2)
-			if self.z < self.web.min_z + .1 then
+			if self.z < self.web.min_z + .01 then
 				self.vz = .0002
-			elseif self.z > self.web.max_z - .1 then
+			elseif self.z > .99 then
 				self.vz = -.0002
 			else
 				self.vz = -.0002 + rnd(.0002)
@@ -808,7 +808,7 @@ function state.gameplay:init_listeners()
 			if not self.web.zapping then
 				self.to_next_powerup -= 1
 				if self.to_next_powerup == 0 then
-					self.to_next_powerup = 7 + self.powerup_streak
+					self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty)
 					add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
 				end
 			end
@@ -882,28 +882,28 @@ function state.gameplay:update()
 		screen_shake_frame -= 1
 	end
 
-	-- spawns
-	self.difficulty += .00025
-	self.timer.flipper -= self.difficulty
-	while self.timer.flipper <= 0 do
-		self.timer.flipper += 90 + rnd(60)
-		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
-		sfx(sound.spawn, 3)
-	end
-
-	self.timer.small_flipper -= self.difficulty * self.difficulty
-	while self.timer.small_flipper <= 0 do
-		self.timer.small_flipper += 300 + rnd(300)
-		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
-		sfx(sound.spawn, 3)
-	end
-
-	self.timer.thwomp -= self.difficulty
-	while self.timer.thwomp <= 0 do
-		self.timer.thwomp += 1500 + rnd(600)
-		add(self.entities, class.thwomp(self.web, self.difficulty))
-		self.difficulty -= .1
-		sfx(sound.spawn, 3)
+	-- spawn enemies
+	if self.player.z > self.web.min_z then
+		self.difficulty += .00025
+		self.timer.flipper -= self.difficulty
+		while self.timer.flipper <= 0 do
+			self.timer.flipper += 90 + rnd(60)
+			add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+			sfx(sound.spawn, 3)
+		end
+		self.timer.small_flipper -= self.difficulty * self.difficulty
+		while self.timer.small_flipper <= 0 do
+			self.timer.small_flipper += 300 + rnd(300)
+			add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+			sfx(sound.spawn, 3)
+		end
+		self.timer.thwomp -= self.difficulty
+		while self.timer.thwomp <= 0 do
+			self.timer.thwomp += 1500 + rnd(600)
+			add(self.entities, class.thwomp(self.web, self.difficulty))
+			self.difficulty -= .1
+			sfx(sound.spawn, 3)
+		end
 	end
 
 	-- input
