@@ -31,7 +31,7 @@ local screen_shake = {
 }
 local screen_shake_frame = 1
 local compliments = {
-	'very good!',
+	'cool and good!',
 	'admirable!',
 	'excellent!',
 	'nice one!',
@@ -43,24 +43,58 @@ local compliments = {
 	'fantastic!',
 	'wonderful!',
 	'alright!',
+	'watch me now!',
+	'rad!',
+	'respect!',
+	'you got this!',
+	'proud of you!',
+	'talk of the town!',
+	'all due respect!',
+	'solid!',
+	'props!',
+	'i believe in you!',
 }
 local threats = {
-	"gotcha!",
-	"caught you!",
-	"you're mine now!",
-	"i've got you now!",
-	"come with me!",
-	"join us",
-	"you're coming with me!",
-	"say farewell",
+	"gotcha~.",
+	"caught you~",
+	"you're mine now~",
+	"i've got you now~",
+	"come with me~",
+	"join us~",
+	"you're coming with me~",
+	"farewell~",
+	"any last words~?",
+	"i'm taking this~",
+	"see ya~",
+	"goodbye~",
+	"so long~",
+	"it's the end for you~"
 }
 
 -->8
 -- utilities
 
+local function printo(text, x, y, col, outline_col)
+	outline_col = outline_col or 0
+	print(text, x - 1, y - 1, outline_col)
+	print(text, x, y - 1, outline_col)
+	print(text, x + 1, y - 1, outline_col)
+	print(text, x + 1, y, outline_col)
+	print(text, x + 1, y + 1, outline_col)
+	print(text, x, y + 1, outline_col)
+	print(text, x - 1, y + 1, outline_col)
+	print(text, x - 1, y, outline_col)
+	print(text, x, y, col)
+end
+
 local function printc(text, x, y, col)
 	x -= #text * 2
 	print(text, x, y, col)
+end
+
+local function printoc(text, x, y, col, outline_col)
+	x -= #text * 2
+	printo(text, x, y, col)
 end
 
 local function printr(text, x, y, col)
@@ -765,7 +799,7 @@ function state.gameplay:init_listeners()
 			sfx(sound.hit, 0)
 		end),
 		conversation:listen('player caught', function()
-			self:show_message(threats[ceil(rnd(#threats))], 9)
+			self:show_message(threats[ceil(rnd(#threats))], 8)
 			sfx(sound.caught, 1)
 		end),
 		conversation:listen('thwomp landed', function()
@@ -908,12 +942,12 @@ function state.gameplay:draw()
 		if (uptime / 30) % 1 > .5 then
 			color = 7
 		end
-		printc(self.message, 64, self.message_y, color)
+		printoc(self.message, 64, self.message_y, color)
 	end
 	if self.score == 0 then
-		printc('0', 64, 0, 7)
+		printoc('0', 64, 0, 7)
 	else
-		printc(self.score .. '00', 64, 0, 7)
+		printoc(self.score .. '00', 64, 0, 7)
 	end
 end
 
