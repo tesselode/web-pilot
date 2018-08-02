@@ -765,10 +765,14 @@ state.gameplay = {}
 
 function state.gameplay:init_web()
 	self.web = class.web()
-	for angle = 0, 1 - 1/15, 1/15 do
+	local tilt = -.1 + rnd(.2)
+	local points = 10 + ceil(rnd(10))
+	local sx = 32 + rnd(24)
+	local sy = 32 + rnd(24)
+	for angle = 0, 1 - 1/points, 1/points do
 		self.web:add_point(
-			50 * cos(angle),
-			50 * sin(angle + .1)
+			sx * cos(angle + rnd(1/20)),
+			sy * sin(angle + tilt + rnd(1/20))
 		)
 	end
 end
@@ -808,7 +812,7 @@ function state.gameplay:init_listeners()
 			if not self.web.zapping then
 				self.to_next_powerup -= 1
 				if self.to_next_powerup == 0 then
-					self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty)
+					self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty) * flr(self.difficulty)
 					add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
 				end
 			end
@@ -999,12 +1003,10 @@ function state.gameplay:draw()
 		printoc(self.message, 64, self.message_y, color)
 	end
 	if self.score == 0 then
-		printoc('0', 64, 0, 7)
+		printoc('0', 64, 0, 11)
 	else
-		printoc(self.score .. '00', 64, 0, 7)
+		printoc(self.score .. '00', 64, 0, 11)
 	end
-
-	print(self.difficulty, 0, 0, 5)
 end
 
 local function apply_audio_effects()
