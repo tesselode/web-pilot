@@ -243,6 +243,16 @@ local model = {
 		{x = -1, y = 1, z = 0},
 		{x = -1, y = -1, z = 0},
 	},
+	thwomp = class.model {
+		{x = -1, y = 1, z = 0},
+		{x = 1, y = 1, z = 0},
+		{x = 2/3, y = -1, z = 0},
+		{x = -2/3, y = -1, z = 0},
+		{x = -1, y = 1, z = 0},
+		{x = 2/3, y = -1, z = 0},
+		{x = -2/3, y = -1, z = 0},
+		{x = 1, y = 1, z = 0},
+	}
 }
 
 class.web = object:extend()
@@ -261,7 +271,8 @@ function class.web:add_point(x, y)
 	add(self.points, {x = x + 64, y = y + 64})
 end
 
-function class.web:get_position(position)
+function class.web:get_position(position, height)
+	height = height or 0
 	position += .5
 	position %= #self.points
 	if position == 0 then position = #self.points end
@@ -270,8 +281,8 @@ function class.web:get_position(position)
 	local b = ceil(position)
 	a, b = self.points[a], self.points[b]
 	local fraction = position % 1
-	return a.x + (b.x - a.x) * fraction,
-	       a.y + (b.y - a.y) * fraction
+	local x, y = a.x + (b.x - a.x) * fraction, a.y + (b.y - a.y) * fraction
+	return x + (64 - x) * height, y + (64 - y) * height
 end
 
 function class.web:zap()
@@ -312,6 +323,7 @@ class.player.friction = .05
 class.player.reload_time = 6
 class.player.jump_power = .003
 class.player.gravity = .0001
+class.player.stun_time = 90
 
 function class.player:new(web, position)
 	self.web = web
@@ -322,13 +334,20 @@ function class.player:new(web, position)
 	self.jumping = false
 	self.reload_timer = 0
 	self.caught = false
+	self.stun_timer = 0
 end
 
 function class.player:jump()
-	if not self.caught and not self.jumping then
+	if not self.caught and not self.jumping and self.stun_timer <= 0 then
 		self.jumping = true
 		self.vz = self.jump_power
 		sfx(sound.jump, 1)
+	end
+end
+
+function class.player:stun()
+	if not self.jumping and not self.caught then
+		self.stun_timer = self.stun_time
 	end
 end
 
@@ -343,21 +362,25 @@ function class.player:update()
 	end
 
 	-- movement
-	local acceleration = self.acceleration
-	if self.caught then acceleration /= 3 end
-	if btn(0) then self.velocity -= acceleration end
-	if btn(1) then self.velocity += acceleration end
-	self.velocity -= self.velocity * self.friction
-	self.position += self.velocity
+	if self.stun_timer == 0 then
+		local acceleration = self.acceleration
+		if self.caught then acceleration /= 3 end
+		if btn(0) then self.velocity -= acceleration end
+		if btn(1) then self.velocity += acceleration end
+		self.velocity -= self.velocity * self.friction
+		self.position += self.velocity
 
-	-- jumping
-	if self.jumping then
-		self.vz -= self.gravity
-		self.z += self.vz
-		if self.z <= 1 then
-			self.z = 1
-			self.jumping = false
+		-- jumping
+		if self.jumping then
+			self.vz -= self.gravity
+			self.z += self.vz
+			if self.z <= 1 then
+				self.z = 1
+				self.jumping = false
+			end
 		end
+	else
+		self.stun_timer -= 1
 	end
 
 	-- shooting
@@ -376,8 +399,13 @@ function class.player:collide(other)
 end
 
 function class.player:draw(p3d)
+	local z = self.z
+	if self.stun_timer > 0 then
+		z += .004 * (self.stun_timer / self.stun_time) * sin(uptime * .2)
+	end
 	local r = atan2(self.x - 64, self.y - 64) + self.velocity * (2/3)
-	model.player:draw(p3d, self.x, self.y, self.z, r, 8, 8, 1, 10)
+	color = self.stun_timer > 0 and 13 or 10
+	model.player:draw(p3d, self.x, self.y, z, r, 8, 8, 1, color)
 end
 
 class.player_bullet = class.physical:extend()
@@ -399,14 +427,16 @@ function class.player_bullet:update()
 end
 
 function class.player_bullet:collide(other)
-	if other:is(class.flipper) then self.dead = true end
+	if other:is(class.enemy) then self.dead = true end
 end
 
 function class.player_bullet:draw(p3d)
 	p3d:line(self.x, self.y, self.z, self.x, self.y, self.z + .01, 10)
 end
 
-class.flipper = class.physical:extend()
+class.enemy = class.physical:extend()
+
+class.flipper = class.enemy:extend()
 
 class.flipper.speed = .0005
 class.flipper.flip_interval = 45
@@ -426,6 +456,8 @@ function class.flipper:new(p3d, web, player, difficulty, small)
 	self.flip_direction = 0
 	self.flip_progress = 0
 	self.dragging = false
+	self.point_value = self.small and 2 or 1
+	self.color = self.small and 15 or 14
 
 	-- cosmetic
 	self.r = 0
@@ -497,9 +529,82 @@ function class.flipper:collide(other)
 end
 
 function class.flipper:draw(p3d)
-	local color = self.small and 15 or 14
 	local scale = self.small and 3 or 6
-	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, color)
+	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, self.color)
+end
+
+class.thwomp = class.enemy:extend()
+
+class.thwomp.radius = 16
+class.thwomp.min_jump_interval = 150
+class.thwomp.max_jump_interval = 300
+class.thwomp.jump_power = .1
+class.thwomp.gravity = .005
+class.thwomp.starting_health = 20
+class.thwomp.point_value = 10
+class.thwomp.color = 8
+
+function class.thwomp:new(web)
+	self.web = web
+	self.position = flr(rnd(#self.web.points)) + .5
+	self.h = 0
+	self.z = .9
+	self.jump_timer = self.min_jump_interval + rnd(self.max_jump_interval - self.min_jump_interval)
+	self.jumping = false
+	self.vp = 0
+	self.vh = 0
+	self.vz = 0
+	self.health = self.starting_health
+	self.flash_timer = 0
+end
+
+function class.thwomp:update()
+	if self.jumping then
+		self.vh -= self.gravity
+		self.h += self.vh
+		self.position += self.vp
+		self.z += self.vz
+		if self.h < 0 then
+			self.h = 0
+			self.jumping = false
+			freeze_frames += 2
+			screen_shake_frame += 2
+			conversation:say 'thwomp landed'
+		end
+	else
+		self.jump_timer -= 1
+		if self.jump_timer <= 0 then
+			self.jump_timer += self.min_jump_interval + rnd(self.max_jump_interval - self.min_jump_interval)
+			self.jumping = true
+			self.vh = self.jump_power
+			self.vp = -.01 + rnd(.01)
+			self.vz = .0001
+		end
+	end
+	self.flash_timer -= 1
+end
+
+function class.thwomp:die()
+	self.dead = true
+	conversation:say('enemy killed', self)
+end
+
+function class.thwomp:collide(other)
+	if other:is(class.player_bullet) then
+		self.health -= 1
+		if self.health == 0 then
+			self:die()
+		else
+			self.flash_timer = 4
+		end
+	end
+end
+
+function class.thwomp:draw(p3d)
+	local x, y = self.web:get_position(self.position)
+	local r = atan2(x - 64, y - 64)
+	local color = self.flash_timer > 0 and 7 or self.color
+	model.thwomp:draw(p3d, self.x, self.y, self.z, r + .25, self.radius, self.radius, 1, color)
 end
 
 class.powerup = class.physical:extend()
@@ -649,11 +754,11 @@ function state.gameplay:init_listeners()
 				end
 			end
 			if not self.player.jumping then
-				self.score += (enemy.small and 2 or 1)
-				add(self.entities, class.score_popup(enemy.small and '200' or '100', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
+				self.score += enemy.point_value
+				add(self.entities, class.score_popup(enemy.point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
 			end
 			for i = 1, 5 do
-				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.small and 15 or 14))
+				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
 			end
 			freeze_frames += 4
 			screen_shake_frame += 3
@@ -663,6 +768,9 @@ function state.gameplay:init_listeners()
 			self:show_message(threats[ceil(rnd(#threats))], 9)
 			sfx(sound.caught, 1)
 		end),
+		conversation:listen('thwomp landed', function()
+			self.player:stun()
+		end)
 	}
 end
 
@@ -671,6 +779,7 @@ function state.gameplay:enter()
 	self:init_web()
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
+	add(self.entities, class.thwomp(self.web))
 	self:init_stars()
 	self.score = 0
 	self.zapper_online = false
@@ -726,14 +835,14 @@ function state.gameplay:update()
 	for entity in all(self.entities) do
 		entity:update()
 		if entity:is(class.physical) and entity.position then
-			entity.x, entity.y = self.web:get_position(entity.position)
+			entity.x, entity.y = self.web:get_position(entity.position, entity.h)
 		end
 	end
 
 	-- zapper
 	if self.web.zapping then
 		for entity in all(self.entities) do
-			if entity:is(class.flipper) and abs(entity.z - self.web.zapping) < .01 then
+			if entity:is(class.enemy) and abs(entity.z - self.web.zapping) < .01 then
 				entity:die()
 			end
 		end
