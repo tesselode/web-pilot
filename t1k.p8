@@ -335,14 +335,18 @@ end
 function class.player:update()
 	if self.caught then
 		self.z = self.caught.z
-		return
+		if self.z < self.web.min_z then
+			return false
+		end
 	elseif self.z < 1 then
 		self.z += (1 - self.z) * .1
 	end
 
 	-- movement
-	if btn(0) then self.velocity -= self.acceleration end
-	if btn(1) then self.velocity += self.acceleration end
+	local acceleration = self.acceleration
+	if self.caught then acceleration /= 3 end
+	if btn(0) then self.velocity -= acceleration end
+	if btn(1) then self.velocity += acceleration end
 	self.velocity -= self.velocity * self.friction
 	self.position += self.velocity
 
@@ -429,6 +433,7 @@ end
 
 function class.flipper:update()
 	if self.dragging then
+		self.position = self.dragging.position
 		self.z -= self.drag_speed
 		return
 	end
@@ -486,7 +491,7 @@ function class.flipper:collide(other)
 		self.dragging = other
 		conversation:say('player caught')
 	end
-	if other:is(class.player_bullet) then
+	if other:is(class.player_bullet) and not self.dragging then
 		self:die()
 	end
 end
