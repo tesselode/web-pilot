@@ -861,6 +861,8 @@ end
 
 state.gameplay = {}
 
+state.gameplay.entity_limit = 30
+
 function state.gameplay:init_web()
 	self.web = class.web()
 	local tilt = -.1 + rnd(.2)
@@ -941,8 +943,10 @@ function state.gameplay:init_listeners()
 			sfx(sound.thwomp_stomped, 2)
 		end),
 		conversation:listen('phantom spawned enemy', function(position, z)
-			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, rnd(1) > .5, position, z))
-			sfx(sound.phantom_spit, 2)
+			if #self.entities < self.entity_limit then
+				add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, rnd(1) > .5, position, z))
+				sfx(sound.phantom_spit, 2)
+			end
 		end)
 	}
 end
@@ -999,14 +1003,14 @@ function state.gameplay:update()
 	end
 
 	-- spawn enemies
-	if self.player.z > self.web.min_z then
-		self.difficulty += .00025
+	self.difficulty += .00025
+	if self.player.z > self.web.min_z and #self.entities < self.entity_limit then
 		self.timer.flipper -= self.difficulty
 		while self.timer.flipper <= 0 do
 			self.timer.flipper += 90 + rnd(60)
 			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
 			if self.difficulty > 1.5 and rnd(1) > .95 then
-				for i = 1, flr(self.difficulty * 7) do
+				for i = 1, flr(self.difficulty * 3) do
 					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
 				end
 				self.difficulty -= .05
@@ -1018,7 +1022,7 @@ function state.gameplay:update()
 			self.timer.small_flipper += 300 + rnd(300)
 			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
 			if rnd(1) > .95 then
-				for i = 1, flr(self.difficulty * 10) do
+				for i = 1, flr(self.difficulty * 3) do
 					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
 				end
 				self.difficulty -= .05
@@ -1139,6 +1143,7 @@ function state.gameplay:draw()
 	else
 		printoc(self.score .. '00', 64, 0, 11)
 	end
+	print(#self.entities, 0, 0, 6)
 end
 
 local function apply_audio_effects()
@@ -1149,7 +1154,7 @@ end
 
 function _init()
 	apply_audio_effects()
- state_manager:switch(state.gameplay)
+	state_manager:switch(state.gameplay)
 	--music(0)
 end
 
