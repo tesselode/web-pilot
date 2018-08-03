@@ -919,7 +919,7 @@ function state.gameplay:init_listeners()
 			if not self.player.jumping and not self.web.zapping then
 				local point_value = enemy.point_value
 				if enemy.z == 1 then
-					point_value *= 2
+					point_value *= 3
 					sfx(sound.rim_kill, 1)
 				end
 				self.score += point_value
