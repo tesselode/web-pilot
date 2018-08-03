@@ -500,7 +500,7 @@ class.enemy = class.physical:extend()
 
 class.flipper = class.enemy:extend()
 
-class.flipper.speed = .0005
+class.flipper.base_speed = .0005
 class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 class.flipper.drag_speed = .00025
@@ -510,11 +510,12 @@ function class.flipper:new(p3d, web, player, game_state, difficulty, small, posi
 	self.web = web
 	self.player = player
 	self.game_state = game_state
+	self.difficulty = difficulty
+	self.small = small
 	self.position = position or flr(rnd(#self.web.points)) + .5
 	self.z = z or .75
-	self.small = small
 	self.radius = small and 2 or 4
-	self.difficulty = difficulty
+	self.speed = self.base_speed * self.difficulty * (.5 + rnd(.5))
 	self.flip_timer = self.flip_interval
 	self.flip_direction = 0
 	self.flip_progress = 0
@@ -550,9 +551,9 @@ function class.flipper:update()
 		return
 	end
 	if self.z < self.web.min_z then
-		self.z += self.speed * 3
+		self.z += self.base_speed * 3
 	elseif self.z < 1 then
-		self.z += self.speed * self.difficulty
+		self.z += self.speed
 		if self.z > 1 then self.z = 1 end
 	end
 	if self.flip_direction == 0 and self.z > self.web.min_z then
