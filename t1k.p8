@@ -1005,12 +1005,24 @@ function state.gameplay:update()
 		while self.timer.flipper <= 0 do
 			self.timer.flipper += 90 + rnd(60)
 			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
+			if self.difficulty > 1.5 and rnd(1) > .95 then
+				for i = 1, flr(self.difficulty * 7) do
+					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
+				end
+				self.difficulty -= .05
+			end
 			sfx(sound.spawn, 3)
 		end
 		self.timer.small_flipper -= self.difficulty * self.difficulty
 		while self.timer.small_flipper <= 0 do
 			self.timer.small_flipper += 300 + rnd(300)
 			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
+			if rnd(1) > .95 then
+				for i = 1, flr(self.difficulty * 10) do
+					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
+				end
+				self.difficulty -= .05
+			end
 			sfx(sound.spawn, 3)
 		end
 		self.timer.thwomp -= self.difficulty
@@ -1018,6 +1030,11 @@ function state.gameplay:update()
 			self.timer.thwomp += 1500 + rnd(600)
 			add(self.entities, class.thwomp(self.web, self.difficulty))
 			self.difficulty -= .1
+			if rnd(1) > .9 then
+				for i = 1, flr(self.difficulty) do
+					add(self.entities, class.thwomp(self.web, self.difficulty))
+				end
+			end
 			sfx(sound.spawn, 3)
 		end
 		self.timer.phantom -= sqrt(self.difficulty)
@@ -1034,7 +1051,7 @@ function state.gameplay:update()
 	if btnp(5) and self.player.caught and self.zapper_online then
 		self.web:zap()
 		self.zapper_online = false
-		self.difficulty -= 1/3 / self.difficulty
+		self.difficulty -= .1
 		if self.difficulty < 1 then self.difficulty = 1 end
 		self.powerup_streak = 0
 		self:show_message 'eat electric death!'
@@ -1217,4 +1234,3 @@ __sfx__
 01800000006100161002610036100461005610066100761008610096100a6100b6100c6100d6100e6100f6100f6100f6100e6100d6100c6100b6100a610096100861007610066100561004610036100261001610
 __music__
 03 22216020
-
