@@ -73,7 +73,11 @@ local threats = {
 	"see ya~",
 	"goodbye~",
 	"so long~",
-	"it's the end for you~"
+	"it's the end for you~",
+	"nice ship~",
+	"i like your ship~",
+	"mind if i borrow this~?",
+	"he he he~",
 }
 
 -->8
