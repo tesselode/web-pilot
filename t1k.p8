@@ -107,6 +107,12 @@ local function printr(text, x, y, col)
 	print(text, x, y, col)
 end
 
+local function wrap(x, limit)
+	while x <= 0 do x += limit end
+	x %= limit
+	return x
+end
+
 local state_manager = {}
 
 function state_manager:call(event, ...)
@@ -482,10 +488,11 @@ class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/30
 class.flipper.drag_speed = .00025
 
-function class.flipper:new(p3d, web, player, difficulty, small)
+function class.flipper:new(p3d, web, player, game_state, difficulty, small)
 	self.p3d = p3d
 	self.web = web
 	self.player = player
+	self.game_state = game_state
 	self.position = flr(rnd(#self.web.points)) + .5
 	self.z = .75
 	self.small = small
@@ -502,13 +509,29 @@ function class.flipper:new(p3d, web, player, difficulty, small)
 	self.r = 0
 end
 
+function class.flipper:get_shortest_path_to_player()
+	local pos = flr(wrap(self.position, #self.web.points))
+	local player_pos = flr(wrap(self.player.position, #self.web.points))
+	local negative_dist, positive_dist = 0, 0
+	local test_pos = pos
+	while test_pos ~= player_pos do
+		test_pos = wrap(test_pos - 1, #self.web.points)
+		negative_dist += 1
+	end
+	test_pos = pos
+	while test_pos ~= player_pos do
+		test_pos = wrap(test_pos + 1, #self.web.points)
+		positive_dist += 1
+	end
+	return negative_dist < positive_dist and -1 or 1
+end
+
 function class.flipper:update()
 	if self.dragging then
 		self.position = self.dragging.position
 		self.z -= self.drag_speed
 		return
 	end
-
 	if self.z < self.web.min_z then
 		self.z += self.speed * 3
 	elseif self.z < 1 then
@@ -524,15 +547,7 @@ function class.flipper:update()
 		if self.flip_timer <= 0 then
 			self.flip_timer += self.flip_interval
 			if self.z == 1 then
-				local p_a = self.position % #self.web.points
-				local p_b = self.player.position % #self.web.points
-				local distance_a = abs(p_a - p_b)
-				local distance_b = abs(#self.web.points - p_a) + p_b
-				if distance_b < distance_a then
-					self.flip_direction = sgn(p_a - p_b)
-				else
-					self.flip_direction = -sgn(p_a - p_b)
-				end
+				self.flip_direction = self:get_shortest_path_to_player()
 			else
 				self.flip_direction = rnd(1) > .5 and 1 or -1
 			end
@@ -562,7 +577,7 @@ function class.flipper:collide(other)
 		self.dragging = other
 		conversation:say('player caught')
 	end
-	if other:is(class.player_bullet) and not self.dragging then
+	if other:is(class.player_bullet) and not self.dragging and not self.game_state:is_colliding(self, self.player) then
 		self:die()
 	end
 end
@@ -868,6 +883,13 @@ function state.gameplay:enter()
 	self:init_listeners()
 end
 
+function state.gameplay:is_colliding(a, b)
+	if not (a:is(class.physical) and b:is(class.physical)) then return false end
+	local distance = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)
+	return distance < (b.radius + a.radius) * (b.radius + a.radius)
+	   and abs(b.z - a.z) < .01
+end
+
 function state.gameplay:show_message(message, color)
 	self.message = message
 	self.message_timer = 120
@@ -892,13 +914,13 @@ function state.gameplay:update()
 		self.timer.flipper -= self.difficulty
 		while self.timer.flipper <= 0 do
 			self.timer.flipper += 90 + rnd(60)
-			add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
 			sfx(sound.spawn, 3)
 		end
 		self.timer.small_flipper -= self.difficulty * self.difficulty
 		while self.timer.small_flipper <= 0 do
 			self.timer.small_flipper += 300 + rnd(300)
-			add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
 			sfx(sound.spawn, 3)
 		end
 		self.timer.thwomp -= self.difficulty
@@ -940,20 +962,16 @@ function state.gameplay:update()
 		end
 	end
 
-	-- process collisions
+	-- call collision events
 	for i = 1, #self.entities - 1 do
 		local entity = self.entities[i]
 		if entity:is(class.physical) then
 			for j = i + 1, #self.entities do
 				local other = self.entities[j]
-				if other:is(class.physical) then
-					local distance = (other.x - entity.x) * (other.x - entity.x) + (other.y - entity.y) * (other.y - entity.y)
-					local colliding = distance < (other.radius + entity.radius) * (other.radius + entity.radius)
-								and abs(other.z - entity.z) < .01
-					if colliding then
-						if entity.collide then entity:collide(other) end
-						if other.collide then other:collide(entity) end
-					end
+				local colliding = self:is_colliding(entity, other)
+				if colliding then
+					if entity.collide then entity:collide(other) end
+					if other.collide then other:collide(entity) end
 				end
 			end
 		end
@@ -1086,4 +1104,3 @@ __sfx__
 01800000006100161002610036100461005610066100761008610096100a6100b6100c6100d6100e6100f6100f6100f6100e6100d6100c6100b6100a610096100861007610066100561004610036100261001610
 __music__
 03 22216020
-
