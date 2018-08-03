@@ -924,6 +924,7 @@ function state.gameplay:init_listeners()
 				add(self.entities, class.score_popup(point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
 			end
 			if enemy:is(class.thwomp) then self.difficulty += .1 end
+			if enemy:is(class.phantom) then self.difficulty += 1/3 end
 			for i = 1, 5 do
 				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
 			end
@@ -951,7 +952,6 @@ function state.gameplay:enter()
 	self:init_web()
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
-	add(self.entities, class.phantom(self.web, 1))
 	self:init_stars()
 	self.score = 0
 	self.zapper_online = false
@@ -960,7 +960,9 @@ function state.gameplay:enter()
 		flipper = 60 + rnd(60),
 		small_flipper = 2400 + rnd(600),
 		thwomp = 5400 + rnd(900),
+		phantom = 7200 + rnd(1800),
 	}
+	if rnd(1) > .9 then self.timer.phantom -= 5400 end
 	self.spawn_timer = 1
 	self.to_next_powerup = 3
 	self.powerup_streak = 0
@@ -1016,6 +1018,13 @@ function state.gameplay:update()
 			self.timer.thwomp += 1500 + rnd(600)
 			add(self.entities, class.thwomp(self.web, self.difficulty))
 			self.difficulty -= .1
+			sfx(sound.spawn, 3)
+		end
+		self.timer.phantom -= sqrt(self.difficulty)
+		while self.timer.phantom <= 0 do
+			self.timer.phantom += 1800 + rnd(900)
+			add(self.entities, class.phantom(self.web, self.difficulty))
+			self.difficulty -= 1/3
 			sfx(sound.spawn, 3)
 		end
 	end
@@ -1208,3 +1217,4 @@ __sfx__
 01800000006100161002610036100461005610066100761008610096100a6100b6100c6100d6100e6100f6100f6100f6100e6100d6100c6100b6100a610096100861007610066100561004610036100261001610
 __music__
 03 22216020
+
