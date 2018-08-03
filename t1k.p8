@@ -144,10 +144,10 @@ end
 --
 -- classic
 --
--- copyright (c) 2014, rxi
+-- Copyright (c) 2014, rxi
 --
--- this module is free software; you can redistribute it and/or modify it under
--- the terms of the mit license. see license for details.
+-- This module is free software; you can redistribute it and/or modify it under
+-- the terms of the MIT license. See LICENSE for details.
 --
 
 local object = {}
@@ -168,10 +168,10 @@ function object:extend()
 	return cls
 end
 
-function object:is(t)
+function object:is(T)
 	local mt = getmetatable(self)
 	while mt do
-		if mt == t then
+		if mt == T then
 			return true
 		end
 		mt = getmetatable(mt)
@@ -360,8 +360,6 @@ class.player.radius = 4
 class.player.acceleration = .01
 class.player.friction = .05
 class.player.reload_time = 6
-class.player.shot_energy_cost = .2
-class.player.shot_energy_refill = 1/30
 class.player.jump_power = .003
 class.player.gravity = .0001
 class.player.stun_time = 90
@@ -374,7 +372,6 @@ function class.player:new(web, position)
 	self.vz = 0
 	self.jumping = false
 	self.reload_timer = 0
-	self.shot_energy = 1
 	self.caught = false
 	self.stun_timer = 0
 end
@@ -427,13 +424,8 @@ function class.player:update()
 
 	-- shooting
 	self.reload_timer -= 1
-	if self.reload_timer <= 0 then
-		self.shot_energy += self.shot_energy_refill
-	 if self.shot_energy > 1 then self.shot_energy = 1 end
-	end
-	if self.reload_timer <= 0 and self.shot_energy > 0 and btn(4) then
+	if self.reload_timer <= 0 and btn(4) then
 		self.reload_timer = self.reload_time
-		self.shot_energy -= self.shot_energy_cost
 		conversation:say('player shot', self.position, self.z)
 	end
 end
