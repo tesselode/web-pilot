@@ -1008,6 +1008,16 @@ function state.gameplay:show_message(message, color)
 	self.message_color = color or 12
 end
 
+function state.gameplay:zap()
+	self.web:zap()
+	self.zapper_online = false
+	self.difficulty -= .1
+	if self.difficulty < 1 then self.difficulty = 1 end
+	self.powerup_streak = 0
+	self:show_message 'eat electric death!'
+	sfx(sound.zapper, 1)
+end
+
 function state.gameplay:update()
 	-- game feel
 	if freeze_frames > 6 then freeze_frames = 6 end
@@ -1070,13 +1080,7 @@ function state.gameplay:update()
 	-- input
 	if btnp(5) then self.player:jump() end
 	if btnp(5) and self.player.caught and self.zapper_online then
-		self.web:zap()
-		self.zapper_online = false
-		self.difficulty -= .1
-		if self.difficulty < 1 then self.difficulty = 1 end
-		self.powerup_streak = 0
-		self:show_message 'eat electric death!'
-		sfx(sound.zapper, 1)
+		self:zap()
 	end
 
 	-- update web and entities
