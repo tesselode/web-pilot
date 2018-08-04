@@ -708,7 +708,7 @@ class.phantom = class.enemy:extend()
 class.phantom.radius = 24
 class.phantom.color = 7
 class.phantom.point_value = 50
-class.phantom.push_back = .01
+class.phantom.push_back = .025
 
 function class.phantom:new(web, difficulty)
 	self.web = web
@@ -759,7 +759,7 @@ function class.phantom:collide(other)
 	if other:is(class.player_bullet) then
 		self.movement_speed += 2 * sgn(self.movement_speed)
 		self.movement_speed *= -1
-		self.z -= self.push_back
+		self.z -= self.push_back / self.difficulty
 		if self.z < self.web.min_z then
 			self:die()
 		else
@@ -999,7 +999,7 @@ function state.gameplay:enter()
 		flipper = 60 + rnd(60),
 		small_flipper = 3200 + rnd(800),
 		thwomp = 6000 + rnd(1000),
-		phantom = 8200 + rnd(2000),
+		phantom = 10000 + rnd(3000),
 	}
 	if rnd(1) > .9 then self.timer.phantom -= 5400 end
 	self.spawn_timer = 1
@@ -1090,7 +1090,7 @@ function state.gameplay:update()
 			end
 			sfx(sound.spawn, 3)
 		end
-		self.timer.phantom -= sqrt(self.difficulty)
+		self.timer.phantom -= self.difficulty
 		while self.timer.phantom <= 0 do
 			self.timer.phantom += 2000 + rnd(1000)
 			add(self.entities, class.phantom(self.web, self.difficulty))
