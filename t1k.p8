@@ -371,12 +371,12 @@ class.physical = object:extend()
 
 class.player = class.physical:extend()
 
-class.player.radius = 4
+class.player.radius = 8
 class.player.acceleration = .01
 class.player.friction = .05
-class.player.reload_time = 6
-class.player.shot_energy_cost = .15
-class.player.shot_energy_refill = 1/25
+class.player.reload_time = 5
+class.player.shot_heat = 1/5
+class.player.shot_cooldown_speed = 1/20
 class.player.jump_power = .003
 class.player.gravity = .0001
 class.player.stun_time = 90
@@ -389,7 +389,8 @@ function class.player:new(web, position)
 	self.vz = 0
 	self.jumping = false
 	self.reload_timer = 0
-	self.shot_energy = 1
+	self.heat = 0
+	self.overheat = false
 	self.caught = false
 	self.stun_timer = 0
 end
@@ -443,12 +444,18 @@ function class.player:update()
 	-- shooting
 	self.reload_timer -= 1
 	if self.reload_timer <= 0 then
-		self.shot_energy += self.shot_energy_refill
-	 if self.shot_energy > 1 then self.shot_energy = 1 end
+		self.heat -= self.shot_cooldown_speed
+		if self.heat <= 0 then
+			self.heat = 0
+			self.overheat = false
+		end
 	end
-	if self.reload_timer <= 0 and self.shot_energy > 0 and btn(4) then
+	if self.reload_timer <= 0 and not self.overheat and btn(4) then
 		self.reload_timer = self.reload_time
-		self.shot_energy -= self.shot_energy_cost
+		self.heat += self.shot_heat
+		if self.heat > 1 then
+			self.overheat = true
+		end
 		conversation:say('player shot', self.position, self.z)
 	end
 end
@@ -473,7 +480,7 @@ end
 class.player_bullet = class.physical:extend()
 
 class.player_bullet.radius = 1
-class.player_bullet.speed = .005
+class.player_bullet.speed = .0067
 
 function class.player_bullet:new(web, position, z)
 	self.web = web
@@ -489,7 +496,7 @@ function class.player_bullet:update()
 end
 
 function class.player_bullet:collide(other)
-	if other:is(class.enemy) then self.dead = true end
+	if other:is(class.enemy) and not other.dragging then self.dead = true end
 end
 
 function class.player_bullet:draw(p3d)
@@ -502,7 +509,7 @@ class.flipper = class.enemy:extend()
 
 class.flipper.base_speed = .0005
 class.flipper.flip_interval = 45
-class.flipper.flip_speed = 1/30
+class.flipper.flip_speed = 1/20
 class.flipper.drag_speed = .00025
 
 function class.flipper:new(p3d, web, player, game_state, difficulty, small, position, z)
@@ -514,7 +521,7 @@ function class.flipper:new(p3d, web, player, game_state, difficulty, small, posi
 	self.small = small
 	self.position = position or flr(rnd(#self.web.points)) + .5
 	self.z = z or .75
-	self.radius = small and 2 or 4
+	self.radius = small and 3 or 6
 	self.speed = self.base_speed * self.difficulty * (.5 + rnd(.5))
 	self.flip_timer = self.flip_interval
 	self.flip_direction = 0
@@ -595,7 +602,7 @@ function class.flipper:collide(other)
 		self.dragging = other
 		conversation:say('player caught')
 	end
-	if other:is(class.player_bullet) and not self.dragging and not self.game_state:is_colliding(self, self.player) then
+	if other:is(class.player_bullet) and not self.dragging then
 		self:die()
 	end
 end
@@ -874,14 +881,10 @@ state.gameplay.entity_limit = 30
 
 function state.gameplay:init_web()
 	self.web = class.web()
-	local tilt = -.1 + rnd(.2)
-	local points = 10 + ceil(rnd(10))
-	local sx = 32 + rnd(24)
-	local sy = 32 + rnd(24)
-	for angle = 0, 1 - 1/points, 1/points do
+	for angle = 0, 1 - 1/16, 1/16 do
 		self.web:add_point(
-			sx * cos(angle + rnd(1/20)),
-			sy * sin(angle + tilt + rnd(1/20))
+			48 * cos(angle),
+			48 * sin(angle)
 		)
 	end
 end
