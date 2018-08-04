@@ -1117,7 +1117,7 @@ function state.gameplay:update()
 	-- zapper
 	if self.web.zapping then
 		for entity in all(self.entities) do
-			if entity:is(class.enemy) and abs(entity.z - self.web.zapping) < .01 and not entity.jumping then
+			if entity:is(class.enemy) and not entity:is(class.phantom) and abs(entity.z - self.web.zapping) < .01 and not entity.jumping then
 				entity:die()
 			end
 		end
