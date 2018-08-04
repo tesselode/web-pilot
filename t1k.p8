@@ -878,15 +878,37 @@ end
 
 state.gameplay = {}
 
+state.gameplay.lane_size = 16
 state.gameplay.entity_limit = 30
 
 function state.gameplay:init_web()
 	self.web = class.web()
-	for angle = 0, 1 - 1/16, 1/16 do
-		self.web:add_point(
-			48 * cos(angle),
-			48 * sin(angle)
-		)
+	local radius = 32 + rnd(24)
+	local angle = 0
+	local tilt_x = rnd(1/12)
+	local tilt_y = rnd(1/12)
+	local x = radius * cos(angle)
+	local y = radius * sin(angle)
+	local start_x = x
+	local start_y = y
+	while true do
+		self.web:add_point(x, y)
+		local new_x = radius * cos(angle + rnd(1/8) + tilt_x)
+		local new_y = radius * sin(angle + rnd(1/8) + tilt_y)
+		local dx = new_x - x
+		local dy = new_y - y
+		local len = sqrt(dx * dx + dy * dy)
+		dx /= len
+		dy /= len
+		dx *= self.lane_size
+		dy *= self.lane_size
+		x += dx
+		y += dy
+		local new_angle = atan2(x, y)
+		if angle > new_angle then break end
+		local distance_from_start = sqrt((x - start_x) * (x - start_x) + (y - start_y) * (y - start_y))
+		if angle > .5 and distance_from_start < self.lane_size * 2/3 then break end
+		angle = new_angle
 	end
 end
 
