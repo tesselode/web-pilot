@@ -983,10 +983,14 @@ function state.gameplay:enter()
 	self.spawn_timer = 1
 	self.to_next_powerup = 3
 	self.powerup_streak = 0
+
+	-- cosmetic
 	self.message = ''
 	self.message_timer = 0
 	self.message_y = 64
 	self.message_color = 12
+	self.rolling_score = self.score
+
 	self:init_listeners()
 end
 
@@ -1126,6 +1130,30 @@ function state.gameplay:update()
 		self.message_timer -= 1
 		self.message_y += (64 - self.message_y) * .1
 	end
+
+	-- rolling score
+	if self.rolling_score < self.score - .1 then
+		self.rolling_score += (self.score - self.rolling_score) * .1
+	else
+		self.rolling_score = self.score
+	end
+end
+
+function state.gameplay:draw_score()
+	local y = 1 + 2 * (self.score - self.rolling_score)
+	if y > 5 then y = 5 end
+	if self.score == 0 then
+		printoc('0', 64, y, 11)
+	elseif self.rolling_score % 1 == 0 then
+		printoc(self.rolling_score .. '00', 64, y, 11)
+	else
+		local score_string = ''
+		if self.rolling_score > 1 then
+			score_string = score_string .. flr(self.rolling_score)
+		end
+		score_string = score_string .. sub(tostr(self.rolling_score % 1), 3, 4)
+		printoc(score_string, 64, y, 11)
+	end
 end
 
 function state.gameplay:draw()
@@ -1151,11 +1179,7 @@ function state.gameplay:draw()
 		end
 		printoc(self.message, 64, self.message_y, color)
 	end
-	if self.score == 0 then
-		printoc('0', 64, 0, 11)
-	else
-		printoc(self.score .. '00', 64, 0, 11)
-	end
+	self:draw_score()
 	--print(#self.entities, 0, 0, 6)
 end
 
