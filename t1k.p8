@@ -522,7 +522,7 @@ function class.flipper:new(p3d, web, player, game_state, difficulty, small, posi
 	self.position = position or flr(rnd(#self.web.points)) + .5
 	self.z = z or .75
 	self.radius = small and 3 or 6
-	self.speed = self.base_speed * self.difficulty * (.5 + rnd(.5))
+	self.speed = self.base_speed * self.difficulty * (.25 + rnd(.75))
 	self.flip_timer = self.flip_interval
 	self.flip_direction = 0
 	self.flip_progress = 0
@@ -619,7 +619,7 @@ class.thwomp.min_jump_interval = 150
 class.thwomp.max_jump_interval = 300
 class.thwomp.jump_power = .1
 class.thwomp.gravity = .005
-class.thwomp.starting_health = 20
+class.thwomp.starting_health = 12
 class.thwomp.point_value = 10
 class.thwomp.color = 8
 
@@ -708,6 +708,7 @@ class.phantom = class.enemy:extend()
 class.phantom.radius = 24
 class.phantom.color = 7
 class.phantom.point_value = 50
+class.phantom.push_back = .01
 
 function class.phantom:new(web, difficulty)
 	self.web = web
@@ -758,7 +759,7 @@ function class.phantom:collide(other)
 	if other:is(class.player_bullet) then
 		self.movement_speed += 2 * sgn(self.movement_speed)
 		self.movement_speed *= -1
-		self.z -= .0075
+		self.z -= self.push_back
 		if self.z < self.web.min_z then
 			self:die()
 		else
@@ -974,9 +975,9 @@ function state.gameplay:enter()
 	self.difficulty = 1
 	self.timer = {
 		flipper = 60 + rnd(60),
-		small_flipper = 2400 + rnd(600),
-		thwomp = 5400 + rnd(900),
-		phantom = 7200 + rnd(1800),
+		small_flipper = 3200 + rnd(800),
+		thwomp = 6000 + rnd(1000),
+		phantom = 8200 + rnd(2000),
 	}
 	if rnd(1) > .9 then self.timer.phantom -= 5400 end
 	self.spawn_timer = 1
@@ -1015,26 +1016,26 @@ function state.gameplay:update()
 	end
 
 	-- spawn enemies
-	self.difficulty += .00025
+	self.difficulty += .0002
 	if self.player.z > self.web.min_z and #self.entities < self.entity_limit then
 		self.timer.flipper -= self.difficulty
 		while self.timer.flipper <= 0 do
 			self.timer.flipper += 90 + rnd(60)
 			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
 			if self.difficulty > 1.5 and rnd(1) > .95 then
-				for i = 1, flr(self.difficulty * 3) do
+				for i = 1, flr(self.difficulty * 2) do
 					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
 				end
 				self.difficulty -= .05
 			end
 			sfx(sound.spawn, 3)
 		end
-		self.timer.small_flipper -= self.difficulty * self.difficulty
+		self.timer.small_flipper -= self.difficulty
 		while self.timer.small_flipper <= 0 do
-			self.timer.small_flipper += 300 + rnd(300)
+			self.timer.small_flipper += 400 + rnd(400)
 			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
 			if rnd(1) > .95 then
-				for i = 1, flr(self.difficulty * 3) do
+				for i = 1, flr(self.difficulty * 2) do
 					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
 				end
 				self.difficulty -= .05
@@ -1043,7 +1044,7 @@ function state.gameplay:update()
 		end
 		self.timer.thwomp -= self.difficulty
 		while self.timer.thwomp <= 0 do
-			self.timer.thwomp += 1500 + rnd(600)
+			self.timer.thwomp += 1600 + rnd(700)
 			add(self.entities, class.thwomp(self.web, self.difficulty))
 			self.difficulty -= .1
 			if rnd(1) > .9 then
@@ -1055,7 +1056,7 @@ function state.gameplay:update()
 		end
 		self.timer.phantom -= sqrt(self.difficulty)
 		while self.timer.phantom <= 0 do
-			self.timer.phantom += 1800 + rnd(900)
+			self.timer.phantom += 2000 + rnd(1000)
 			add(self.entities, class.phantom(self.web, self.difficulty))
 			self.difficulty -= 1/3
 			sfx(sound.spawn, 3)
@@ -1086,7 +1087,7 @@ function state.gameplay:update()
 	-- zapper
 	if self.web.zapping then
 		for entity in all(self.entities) do
-			if entity:is(class.enemy) and abs(entity.z - self.web.zapping) < .01 and not (entity.h and entity.h > 0) then
+			if entity:is(class.enemy) and abs(entity.z - self.web.zapping) < .01 and not entity.jumping then
 				entity:die()
 			end
 		end
@@ -1155,7 +1156,7 @@ function state.gameplay:draw()
 	else
 		printoc(self.score .. '00', 64, 0, 11)
 	end
-	print(#self.entities, 0, 0, 6)
+	--print(#self.entities, 0, 0, 6)
 end
 
 local function apply_audio_effects()
