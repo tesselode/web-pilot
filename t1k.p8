@@ -871,8 +871,8 @@ class.star = object:extend()
 
 function class.star:new()
 	local angle = rnd(1)
-	self.x = 64 + 64 * cos(angle)
-	self.y = 64 + 64 * sin(angle)
+	self.x = 64 + 128 * cos(angle)
+	self.y = 64 + 128 * sin(angle)
 	self.z = .8 + rnd(.4)
 end
 
@@ -880,8 +880,8 @@ function class.star:update(speed)
 	self.z += .001 * speed
 	if self.z >= 1.2 then
 		local angle = rnd(1)
-		self.x = 64 + 64 * cos(angle)
-		self.y = 64 + 64 * sin(angle)
+		self.x = 64 + 128 * cos(angle)
+		self.y = 64 + 128 * sin(angle)
 		self.z = .8
 	end
 end
@@ -1051,6 +1051,7 @@ end
 
 function state.gameplay:enter()
 	self.p3d = class.p3d()
+	self.p3d.oz = -2/3
 	self:generate_web()
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
@@ -1064,6 +1065,8 @@ function state.gameplay:enter()
 	self.to_next_powerup = 3
 	self.powerup_streak = 0
 	self.game_over_timer = 0
+	self.intro = true
+	self.wait_for_update = true
 
 	-- cosmetic
 	self.message = ''
@@ -1100,6 +1103,8 @@ function state.gameplay:zap()
 end
 
 function state.gameplay:update()
+	self.wait_for_update = false
+
 	-- game feel
 	if freeze_frames > 6 then freeze_frames = 6 end
 	if freeze_frames > 0 then
@@ -1110,58 +1115,71 @@ function state.gameplay:update()
 		screen_shake_frame -= 1
 	end
 
-	-- spawn enemies
-	self.difficulty += .0002
-	if self.player.z > self.web.min_z and #self.entities < self.entity_limit then
-		self.timer.flipper -= self.difficulty
-		while self.timer.flipper <= 0 do
-			self.timer.flipper += 90 + rnd(60)
-			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
-			if self.difficulty > 1.5 and rnd(1) > .95 then
-				for i = 1, flr(self.difficulty * 2) do
-					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
-				end
-				self.difficulty -= .05
-			end
-			sfx(sound.spawn, 3)
-		end
-		self.timer.small_flipper -= self.difficulty
-		while self.timer.small_flipper <= 0 do
-			self.timer.small_flipper += 400 + rnd(400)
-			add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
-			if rnd(1) > .95 then
-				for i = 1, flr(self.difficulty * 2) do
-					add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
-				end
-				self.difficulty -= .05
-			end
-			sfx(sound.spawn, 3)
-		end
-		self.timer.thwomp -= self.difficulty
-		while self.timer.thwomp <= 0 do
-			self.timer.thwomp += 1600 + rnd(700)
-			add(self.entities, class.thwomp(self.web, self.difficulty))
-			self.difficulty -= .1
-			if rnd(1) > .9 then
-				for i = 1, flr(self.difficulty) do
-					add(self.entities, class.thwomp(self.web, self.difficulty))
-				end
-			end
-			sfx(sound.spawn, 3)
-		end
-		self.timer.phantom -= self.difficulty
-		while self.timer.phantom <= 0 do
-			self.timer.phantom += 2000 + rnd(1000)
-			add(self.entities, class.phantom(self.web, self.difficulty))
-			self.difficulty -= 1/3
-			sfx(sound.spawn, 3)
+	-- intro sequence
+	if self.intro then
+		self.p3d.oz += .0025
+		self.player.z = 1 - self.p3d.oz
+		if self.p3d.oz >= 0 then
+			self.p3d.oz = 0
+			self.player.z = 1
+			self.intro = false
 		end
 	end
 
-	-- input
-	if btnp(5) then self.player:jump() end
-	if btnp(5) and self.player.caught and self.zapper_online then
-		self:zap()
+	-- spawn enemies
+	if not self.intro then
+		self.difficulty += .0002
+		if self.player.z > self.web.min_z and #self.entities < self.entity_limit then
+			self.timer.flipper -= self.difficulty
+			while self.timer.flipper <= 0 do
+				self.timer.flipper += 90 + rnd(60)
+				add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
+				if self.difficulty > 1.5 and rnd(1) > .95 then
+					for i = 1, flr(self.difficulty * 2) do
+						add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
+					end
+					self.difficulty -= .05
+				end
+				sfx(sound.spawn, 3)
+			end
+			self.timer.small_flipper -= self.difficulty
+			while self.timer.small_flipper <= 0 do
+				self.timer.small_flipper += 400 + rnd(400)
+				add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
+				if rnd(1) > .95 then
+					for i = 1, flr(self.difficulty * 2) do
+						add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
+					end
+					self.difficulty -= .05
+				end
+				sfx(sound.spawn, 3)
+			end
+			self.timer.thwomp -= self.difficulty
+			while self.timer.thwomp <= 0 do
+				self.timer.thwomp += 1600 + rnd(700)
+				add(self.entities, class.thwomp(self.web, self.difficulty))
+				self.difficulty -= .1
+				if rnd(1) > .9 then
+					for i = 1, flr(self.difficulty) do
+						add(self.entities, class.thwomp(self.web, self.difficulty))
+					end
+				end
+				sfx(sound.spawn, 3)
+			end
+			self.timer.phantom -= self.difficulty
+			while self.timer.phantom <= 0 do
+				self.timer.phantom += 2000 + rnd(1000)
+				add(self.entities, class.phantom(self.web, self.difficulty))
+				self.difficulty -= 1/3
+				sfx(sound.spawn, 3)
+			end
+		end
+
+		-- input
+		if btnp(5) then self.player:jump() end
+		if btnp(5) and self.player.caught and self.zapper_online then
+			self:zap()
+		end
 	end
 
 	-- update web and entities
@@ -1216,7 +1234,9 @@ function state.gameplay:update()
 	local target_hy = 64 + (self.player.y - 64) * 1/6
 	self.p3d.hx += (target_hx - self.p3d.hx) * .1
 	self.p3d.hy += (target_hy - self.p3d.hy) * .1
-	self.p3d.oz = -(self.player.z - 1) / 3
+	if not self.intro then
+		self.p3d.oz = -(self.player.z - 1) / 3
+	end
 
 	-- message
 	if self.message_timer > 0 then
@@ -1250,6 +1270,8 @@ function state.gameplay:draw_score()
 end
 
 function state.gameplay:draw()
+	if self.wait_for_update then return end
+
 	--draw world
 	local shake = screen_shake[min(screen_shake_frame, #screen_shake)]
 	camera(shake[1], shake[2])
@@ -1299,23 +1321,74 @@ function state.title:enter()
 	self.stars = {}
 	for i = 1, 50 do add(self.stars, class.star()) end
 	self.title_z = 0
+	self.web_alpha = 1
+
+	self.state = 0
+	self.hy_offset = 0
+	self.option_selected = 1
+	self.changing_web = false
 end
 
 function state.title:update()
+	if self.state == 0 then
+		if btnp(4) then self.state = 1 end
+	elseif self.state == 1 then
+		if btnp(2) then
+			self.option_selected -= 1
+			if self.option_selected == 0 then self.option_selected = 1 end
+		end
+		if btnp(3) then
+			self.option_selected += 1
+			if self.option_selected == 3 then self.option_selected = 2 end
+		end
+		if btnp(4) then
+			if self.option_selected == 1 then
+				music(-1)
+				self.state = 2
+			end
+			if self.option_selected == 2 and not self.changing_web then
+				self.changing_web = true
+			end
+		end
+		if btnp(5) then self.state = 0 end
+	elseif self.state == 2 then
+		self.p3d.oz -= .01
+		if self.p3d.oz < -1 then
+			state_manager:switch(state.gameplay)
+		end
+	end
+
+	-- cosmetic
+	
+	local target_hy_offset = self.state == 1 and 48 or 0
+	self.hy_offset += (target_hy_offset - self.hy_offset) * .1
 	for star in all(self.stars) do star:update(1) end
 	self.p3d.hx = 64 + 4 * sin(uptime / 240)
-	self.p3d.hy = 64 + 4 * cos(uptime / 300)
-	self.p3d.oz -= self.p3d.oz * .01
+	self.p3d.hy = 64 + self.hy_offset + 4 * cos(uptime / 300)
+	if self.state == 0 or self.state == 1 then
+		self.p3d.oz -= self.p3d.oz * .01
+	end
 	if self.p3d.oz > -.001 then self.p3d.oz = 0 end
 	if self.p3d.oz > -.025 then
 		self.title_z += (1 - self.title_z) * 2/30
 		if self.title_z > .999 then self.title_z = 1 end
 	end
+
+	-- change web
+	if self.changing_web then
+		self.web_alpha -= self.web_alpha * .1
+		if self.web_alpha < 1/4 then
+			state.gameplay.generate_web(self)
+			self.changing_web = false
+		end
+	else
+		self.web_alpha += (1 - self.web_alpha) * .1
+	end
 end
 
 function state.title:draw()
 	for star in all(self.stars) do star:draw(self.p3d) end
-	self.web:draw(self.p3d, 3)
+	self.web:draw(self.p3d, self.web_alpha < 1/2 and 0 or self.web_alpha < 2/3 and 1 or 3)
 	local x = 64 + 3.99 * sin(uptime / 480)
 	pal(7, 1)
 	pal(10, 2)
@@ -1325,6 +1398,16 @@ function state.title:draw()
 	self.p3d:sspr(0, 32, 49, 16, x, 64, self.web.min_z + (self.title_z - self.web.min_z) * .99, 2)
 	pal()
 	self.p3d:sspr(0, 32, 49, 16, x, 64, self.title_z, 2)
+
+	if self.state == 0 and self.title_z == 1 then
+		printoc('press 🅾️ to start', 64, 96, 11, 0)
+	end
+	if self.state == 1 then
+		local color = self.option_selected == 1 and 11 or 3
+		printoc('play', 64, 96, color, 0)
+		color = self.option_selected == 2 and 11 or 3
+		printoc('change destination', 64, 104, color, 0)
+	end
 end
 
 state.game_over = {}
@@ -1410,7 +1493,7 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000aaa0aaa0a0a0a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 000000000000000000a0a0a0a0a0a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000000000000a0a0a00a000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00aaaaaaaaaaaaa000a0a0a00a000a00aaaaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000aaa0a0a00a000a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000a000a0a0a0a0a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000aaa0aaa0a0a0a0a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
