@@ -3,6 +3,23 @@ version 16
 __lua__
 -- utilities
 
+local glyphs = "…∧░➡️⧗▤⬆️☉🅾️◆█★⬇️✽●♥웃⌂⬅️▥❎🐱ˇ▒♪😐"
+
+local function get_text_width(text)
+	local width = 0
+	for i = 1, #text do
+		local char = sub(text, i, i)
+		local is_glyph = false
+		for j = 1, #glyphs do
+			if char == sub(glyphs, j, j) then
+				is_glyph = true
+			end
+		end
+		width += (is_glyph and 6 or 4)
+	end
+	return width
+end
+
 local function printo(text, x, y, col, outline_col)
 	outline_col = outline_col or 0
 	print(text, x - 1, y - 1, outline_col)
@@ -17,18 +34,23 @@ local function printo(text, x, y, col, outline_col)
 end
 
 local function printc(text, x, y, col)
-	x -= #text * 2
+	x -= get_text_width(text) / 2
 	print(text, x, y, col)
 end
 
 local function printoc(text, x, y, col, outline_col)
-	x -= #text * 2
-	printo(text, x, y, col)
+	x -= get_text_width(text) / 2
+	printo(text, x, y, col, outline_col)
 end
 
 local function printr(text, x, y, col)
-	x -= #text * 4
+	x -= get_text_width(text)
 	print(text, x, y, col)
+end
+
+local function printor(text, x, y, col, outline_col)
+	x -= get_text_width(text)
+	printo(text, x, y, col, outline_col)
 end
 
 local function wrap(x, limit)
@@ -1240,7 +1262,14 @@ function state.gameplay:draw()
 			sprite = 4
 		end
 		spr(sprite, 120, 120)
-	end
+		if self.player.caught then
+			local color = 9
+			if (uptime / 30) % 1 > .5 then
+				color = 7
+			end
+			printor("press ❎ to use ", 120, 121, color)
+		end
+ end
 	if self.message_timer > 0 then
 		local color = self.message_color
 		if (uptime / 30) % 1 > .5 then
@@ -1369,3 +1398,4 @@ __sfx__
 __music__
 03 22216020
 00 65235224
+
