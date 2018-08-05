@@ -342,8 +342,40 @@ class.web.min_z = .9
 class.web.max_z = 1.01
 class.web.zap_speed = .002
 
-function class.web:new()
+function class.web:generate()
 	self.points = {}
+	local lane_size = 16
+	local radius = 32 + rnd(24)
+	local angle = 0
+	local tilt_x = rnd(1/12)
+	local tilt_y = rnd(1/12)
+	local x = radius * cos(angle)
+	local y = radius * sin(angle)
+	local start_x = x
+	local start_y = y
+	while true do
+		self:add_point(x, y)
+		local new_x = radius * cos(angle + rnd(1/8) + tilt_x)
+		local new_y = radius * sin(angle + rnd(1/8) + tilt_y)
+		local dx = new_x - x
+		local dy = new_y - y
+		local len = sqrt(dx * dx + dy * dy)
+		dx /= len
+		dy /= len
+		dx *= lane_size
+		dy *= lane_size
+		x += dx
+		y += dy
+		local new_angle = atan2(x, y)
+		if angle > new_angle then break end
+		local distance_from_start = sqrt((x - start_x) * (x - start_x) + (y - start_y) * (y - start_y))
+		if angle > .5 and distance_from_start < lane_size * 2/3 then break end
+		angle = new_angle
+	end
+end
+
+function class.web:new()
+	self:generate()
 	self.closed = true
 	self.zapping = false
 end
@@ -922,38 +954,6 @@ state.gameplay = {}
 state.gameplay.entity_limit = 30
 state.gameplay.game_over_time = 240
 
-function state.gameplay:generate_web()
-	self.web = class.web()
-	local lane_size = 16
-	local radius = 32 + rnd(24)
-	local angle = 0
-	local tilt_x = rnd(1/12)
-	local tilt_y = rnd(1/12)
-	local x = radius * cos(angle)
-	local y = radius * sin(angle)
-	local start_x = x
-	local start_y = y
-	while true do
-		self.web:add_point(x, y)
-		local new_x = radius * cos(angle + rnd(1/8) + tilt_x)
-		local new_y = radius * sin(angle + rnd(1/8) + tilt_y)
-		local dx = new_x - x
-		local dy = new_y - y
-		local len = sqrt(dx * dx + dy * dy)
-		dx /= len
-		dy /= len
-		dx *= lane_size
-		dy *= lane_size
-		x += dx
-		y += dy
-		local new_angle = atan2(x, y)
-		if angle > new_angle then break end
-		local distance_from_start = sqrt((x - start_x) * (x - start_x) + (y - start_y) * (y - start_y))
-		if angle > .5 and distance_from_start < lane_size * 2/3 then break end
-		angle = new_angle
-	end
-end
-
 function state.gameplay:init_stars()
 	self.stars = {}
 	for i = 1, 20 do
@@ -1049,10 +1049,10 @@ function state.gameplay:init_listeners()
 	}
 end
 
-function state.gameplay:enter()
+function state.gameplay:enter(web)
 	self.p3d = class.p3d()
 	self.p3d.oz = -2/3
-	self:generate_web()
+	self.web = web
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
 	self:init_stars()
@@ -1317,7 +1317,7 @@ function state.title:enter()
 	music(0)
 	self.p3d = class.p3d()
 	self.p3d.oz = -1
-	state.gameplay.generate_web(self)
+	self.web = class.web()
 	self.stars = {}
 	for i = 1, 50 do add(self.stars, class.star()) end
 	self.title_z = 0
@@ -1354,12 +1354,11 @@ function state.title:update()
 	elseif self.state == 2 then
 		self.p3d.oz -= .01
 		if self.p3d.oz < -1 then
-			state_manager:switch(state.gameplay)
+			state_manager:switch(state.gameplay, self.web)
 		end
 	end
 
 	-- cosmetic
-	
 	local target_hy_offset = self.state == 1 and 48 or 0
 	self.hy_offset += (target_hy_offset - self.hy_offset) * .1
 	for star in all(self.stars) do star:update(1) end
@@ -1378,7 +1377,7 @@ function state.title:update()
 	if self.changing_web then
 		self.web_alpha -= self.web_alpha * .1
 		if self.web_alpha < 1/4 then
-			state.gameplay.generate_web(self)
+			self.web = class.web()
 			self.changing_web = false
 		end
 	else
