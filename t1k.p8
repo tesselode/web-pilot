@@ -480,6 +480,7 @@ end
 function class.player:stun()
 	if not self.jumping and not self.caught then
 		self.stun_timer = self.stun_time
+		self.velocity = 0
 	end
 end
 
