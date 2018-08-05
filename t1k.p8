@@ -1,90 +1,6 @@
 pico-8 cartridge // http://www.pico-8.com
 version 16
 __lua__
--- resources
-
-local uptime = 0
-local state = {}
-local class = {}
-local sound = {
-	shoot = 8,
-	jump = 9,
-	hit = 10,
-	flip_big = 11,
-	flip_small = 12,
-	caught = 13,
-	spawn = 14,
-	recharge = 15,
-	bonus = 16,
-	thwomp_arrived = 17,
-	thwomp_stomped = 18,
-	thwomp_hit = 19,
-	rim_kill = 20,
-	zapper = 21,
-	phantom_arrived = 22,
-	phantom_hit = 23,
-	phantom_killed = 24,
-	phantom_spit = 25,
-}
-local freeze_frames = 0
-local screen_shake = {
-	{0, 0},
-	{-1, -1},
-	{1, 1},
-	{-1, 1},
-	{1, -1},
-	{-2, -2},
-	{2, 2},
-	{-2, 2},
-	{2, -2},
-}
-local screen_shake_frame = 1
-local compliments = {
-	'cool and good!',
-	'admirable!',
-	'excellent!',
-	'nice one!',
-	'good one!',
-	'good job!',
-	'nice catch!',
-	'choice!',
-	'awesome!',
-	'fantastic!',
-	'wonderful!',
-	'alright!',
-	'watch me now!',
-	'rad!',
-	'respect!',
-	'you got this!',
-	'proud of you!',
-	'talk of the town!',
-	'all due respect!',
-	'solid!',
-	'props!',
-	'i believe in you!',
-}
-local threats = {
-	"gotcha~.",
-	"caught you~",
-	"you're mine now~",
-	"i've got you now~",
-	"come with me~",
-	"join us~",
-	"you're coming with me~",
-	"farewell~",
-	"any last words~?",
-	"i'm taking this~",
-	"see ya~",
-	"goodbye~",
-	"so long~",
-	"it's the end for you~",
-	"nice ship~",
-	"i like your ship~",
-	"mind if i borrow this~?",
-	"he he he~",
-}
-
--->8
 -- utilities
 
 local function printo(text, x, y, col, outline_col)
@@ -199,6 +115,8 @@ function object:__call(...)
 	return obj
 end
 
+local class = {}
+
 -->8
 -- pseudo-3d drawing
 
@@ -241,9 +159,6 @@ function class.p3d:sspr(sx, sy, sw, sh, x, y, z, scale)
 	sspr(sx, sy, sw, sh, x, y, w, h)
 end
 
--->8
--- classes
-
 class.model = object:extend()
 
 function class.model:new(points)
@@ -277,6 +192,11 @@ function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
 	end
 end
 
+-->8
+-- resources
+
+local uptime = 0
+local state = {}
 local model = {
 	player = class.model {
 		{x = -1, y = 0, z = 1/72},
@@ -308,6 +228,86 @@ local model = {
 		{x = 1, y = 1, z = 0},
 	}
 }
+local sound = {
+	shoot = 8,
+	jump = 9,
+	hit = 10,
+	flip_big = 11,
+	flip_small = 12,
+	caught = 13,
+	spawn = 14,
+	recharge = 15,
+	bonus = 16,
+	thwomp_arrived = 17,
+	thwomp_stomped = 18,
+	thwomp_hit = 19,
+	rim_kill = 20,
+	zapper = 21,
+	phantom_arrived = 22,
+	phantom_hit = 23,
+	phantom_killed = 24,
+	phantom_spit = 25,
+}
+local freeze_frames = 0
+local screen_shake = {
+	{0, 0},
+	{-1, -1},
+	{1, 1},
+	{-1, 1},
+	{1, -1},
+	{-2, -2},
+	{2, 2},
+	{-2, 2},
+	{2, -2},
+}
+local screen_shake_frame = 1
+local compliments = {
+	'cool and good!',
+	'admirable!',
+	'excellent!',
+	'nice one!',
+	'good one!',
+	'good job!',
+	'nice catch!',
+	'choice!',
+	'awesome!',
+	'fantastic!',
+	'wonderful!',
+	'alright!',
+	'watch me now!',
+	'rad!',
+	'respect!',
+	'you got this!',
+	'proud of you!',
+	'talk of the town!',
+	'all due respect!',
+	'solid!',
+	'props!',
+	'i believe in you!',
+}
+local threats = {
+	"gotcha~.",
+	"caught you~",
+	"you're mine now~",
+	"i've got you now~",
+	"come with me~",
+	"join us~",
+	"you're coming with me~",
+	"farewell~",
+	"any last words~?",
+	"i'm taking this~",
+	"see ya~",
+	"goodbye~",
+	"so long~",
+	"it's the end for you~",
+	"nice ship~",
+	"i like your ship~",
+	"mind if i borrow this~?",
+	"he he he~",
+}
+
+-->8
+-- gameplay classes
 
 class.web = object:extend()
 
@@ -1219,6 +1219,9 @@ function state.gameplay:draw()
 	--print(#self.entities, 0, 0, 6)
 end
 
+-->8
+-- other states
+
 state.game_over = {}
 
 function state.game_over:enter()
@@ -1239,6 +1242,9 @@ local function apply_audio_effects()
 	poke(0x5f41, 0b1100) -- delay (channel 2, 3)
 	poke(0x5f43, 0b1000) -- distortion (channel 0)
 end
+
+-->8
+-- main loop
 
 function _init()
 	apply_audio_effects()
