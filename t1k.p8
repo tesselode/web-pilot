@@ -395,6 +395,15 @@ function class.player:new(web, position)
 	self.stun_timer = 0
 end
 
+function class.player:shoot()
+	self.reload_timer = self.reload_time
+	self.heat += self.shot_heat
+	if self.heat > 1 then
+		self.overheat = true
+	end
+	conversation:say('player shot', self.position, self.z)
+end
+
 function class.player:jump()
 	if not self.caught and not self.jumping and self.stun_timer <= 0 then
 		self.jumping = true
@@ -451,12 +460,7 @@ function class.player:update()
 		end
 	end
 	if self.reload_timer <= 0 and not self.overheat and btn(4) then
-		self.reload_timer = self.reload_time
-		self.heat += self.shot_heat
-		if self.heat > 1 then
-			self.overheat = true
-		end
-		conversation:say('player shot', self.position, self.z)
+		self:shoot()
 	end
 end
 
@@ -551,6 +555,16 @@ function class.flipper:get_shortest_path_to_player()
 	return negative_dist < positive_dist and -1 or 1
 end
 
+function class.flipper:flip()
+	self.flip_timer += self.flip_interval
+	if self.z == 1 then
+		self.flip_direction = self:get_shortest_path_to_player()
+	else
+		self.flip_direction = rnd(1) > .5 and 1 or -1
+	end
+	self.flip_progress = 0
+end
+
 function class.flipper:update()
 	if self.dragging then
 		self.position = self.dragging.position
@@ -570,13 +584,7 @@ function class.flipper:update()
 			self.flip_timer -= (self.small and 2 or 1) * self.difficulty
 		end
 		if self.flip_timer <= 0 then
-			self.flip_timer += self.flip_interval
-			if self.z == 1 then
-				self.flip_direction = self:get_shortest_path_to_player()
-			else
-				self.flip_direction = rnd(1) > .5 and 1 or -1
-			end
-			self.flip_progress = 0
+			self:flip()
 		end
 	end
 	if self.flip_direction ~= 0 then
@@ -638,6 +646,21 @@ function class.thwomp:new(web, difficulty)
 	self.flash_timer = 0
 end
 
+function class.thwomp:jump()
+	self.jump_timer += self.min_jump_interval + rnd(self.max_jump_interval - self.min_jump_interval)
+	self.jumping = true
+	self.vh = self.jump_power
+	self.vp = -.1 + rnd(.2)
+	if self.z < self.web.min_z + .01 then
+		self.vz = .0002
+	elseif self.z > .99 then
+		self.vz = -.0002
+	else
+		self.vz = -.0002 + rnd(.0002)
+	end
+	sfx(sound.jump, 2)
+end
+
 function class.thwomp:update()
 	if self.z < self.web.min_z then
 		self.z += .001
@@ -661,20 +684,11 @@ function class.thwomp:update()
 	else
 		self.jump_timer -= self.difficulty / 2
 		if self.jump_timer <= 0 then
-			self.jump_timer += self.min_jump_interval + rnd(self.max_jump_interval - self.min_jump_interval)
-			self.jumping = true
-			self.vh = self.jump_power
-			self.vp = -.1 + rnd(.2)
-			if self.z < self.web.min_z + .01 then
-				self.vz = .0002
-			elseif self.z > .99 then
-				self.vz = -.0002
-			else
-				self.vz = -.0002 + rnd(.0002)
-			end
-			sfx(sound.jump, 2)
+			self:jump()
 		end
 	end
+
+	-- cosmetic
 	self.flash_timer -= 1
 end
 
@@ -882,7 +896,7 @@ state.gameplay.lane_size = 16
 state.gameplay.entity_limit = 30
 state.gameplay.game_over_time = 240
 
-function state.gameplay:init_web()
+function state.gameplay:generate_web()
 	self.web = class.web()
 	local radius = 32 + rnd(24)
 	local angle = 0
@@ -920,88 +934,104 @@ function state.gameplay:init_stars()
 	end
 end
 
-function state.gameplay:init_listeners()
-	self.listeners = {
-		conversation:listen('player shot', function(position, z)
-			add(self.entities, class.player_bullet(self.web, position, z))
-			sfx(sound.shoot, 0)
-		end),
-		conversation:listen('powerup collected', function(x, y, z)
-			for i = 1, 10 do
-				add(self.entities, class.particle(x, y, z, 12))
-			end
-			if not self.zapper_online then
-				self.zapper_online = true
-				self:show_message 'superzapper recharge'
-				sfx(sound.recharge, 1)
-			else
-				self.powerup_streak += 1
-				self.score += self.powerup_streak * 10
-				add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
-				local message = compliments[ceil(rnd(#compliments))]
-				message = message .. ' +' .. self.powerup_streak .. '000'
-				self:show_message(message)
-				sfx(sound.bonus, 1)
-			end
-		end),
-		conversation:listen('enemy killed', function(enemy)
-			if not self.web.zapping then
-				self.to_next_powerup -= 1
-				if self.to_next_powerup == 0 then
-					self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty) * flr(self.difficulty)
-					add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
-				end
-			end
-			if not self.player.jumping and not self.web.zapping then
-				local point_value = enemy.point_value
-				if enemy.z == 1 then
-					point_value *= 3
-					sfx(sound.rim_kill, 1)
-				end
-				self.score += point_value
-				add(self.entities, class.score_popup(point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
-			end
-			if enemy:is(class.thwomp) then self.difficulty += .1 end
-			if enemy:is(class.phantom) then self.difficulty += 1/3 end
-			for i = 1, 5 do
-				add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
-			end
-			freeze_frames += 4
-			screen_shake_frame += 3
-			sfx(sound.hit, 0)
-		end),
-		conversation:listen('player caught', function()
-			self:show_message(threats[ceil(rnd(#threats))], 8)
-			sfx(sound.caught, 1)
-		end),
-		conversation:listen('thwomp landed', function()
-			self.player:stun()
-			sfx(sound.thwomp_stomped, 2)
-		end),
-		conversation:listen('phantom spawned enemy', function(position, z)
-			if #self.entities < self.entity_limit then
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, rnd(1) > .5, position, z))
-				sfx(sound.phantom_spit, 2)
-			end
-		end)
-	}
-end
-
-function state.gameplay:enter()
-	self.p3d = class.p3d()
-	self:init_web()
-	self.entities = {}
-	self.player = add(self.entities, class.player(self.web, 1))
-	self:init_stars()
-	self.score = 0
-	self.zapper_online = false
-	self.difficulty = 1
+function state.gameplay:init_timers()
 	self.timer = {
 		flipper = 60 + rnd(60),
 		small_flipper = 3200 + rnd(800),
 		thwomp = 6000 + rnd(1000),
 		phantom = 10000 + rnd(3000),
 	}
+end
+
+function state.gameplay:on_player_shot(position, z)
+	add(self.entities, class.player_bullet(self.web, position, z))
+	sfx(sound.shoot, 0)
+end
+
+function state.gameplay:on_powerup_collected(x, y, z)
+	for i = 1, 10 do
+		add(self.entities, class.particle(x, y, z, 12))
+	end
+	if not self.zapper_online then
+		self.zapper_online = true
+		self:show_message 'superzapper recharge'
+		sfx(sound.recharge, 1)
+	else
+		self.powerup_streak += 1
+		self.score += self.powerup_streak * 10
+		add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
+		local message = compliments[ceil(rnd(#compliments))]
+		message = message .. ' +' .. self.powerup_streak .. '000'
+		self:show_message(message)
+		sfx(sound.bonus, 1)
+	end
+end
+
+function state.gameplay:on_enemy_killed(enemy)
+	if not self.web.zapping then
+		self.to_next_powerup -= 1
+		if self.to_next_powerup == 0 then
+			self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty) * flr(self.difficulty)
+			add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
+		end
+	end
+	if not self.player.jumping and not self.web.zapping then
+		local point_value = enemy.point_value
+		if enemy.z == 1 then
+			point_value *= 3
+			sfx(sound.rim_kill, 1)
+		end
+		self.score += point_value
+		add(self.entities, class.score_popup(point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
+	end
+	if enemy:is(class.thwomp) then self.difficulty += .1 end
+	if enemy:is(class.phantom) then self.difficulty += 1/3 end
+	for i = 1, 5 do
+		add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
+	end
+	freeze_frames += 4
+	screen_shake_frame += 3
+	sfx(sound.hit, 0)
+end
+
+function state.gameplay:on_player_caught()
+	self:show_message(threats[ceil(rnd(#threats))], 8)
+	sfx(sound.caught, 1)
+end
+
+function state.gameplay:on_thwomp_landed()
+	self.player:stun()
+	sfx(sound.thwomp_stomped, 2)
+end
+
+function state.gameplay:on_phantom_spawned_enemy(position, z)
+	if #self.entities < self.entity_limit then
+		add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, rnd(1) > .5, position, z))
+		sfx(sound.phantom_spit, 2)
+	end
+end
+
+function state.gameplay:init_listeners()
+	self.listeners = {
+		conversation:listen('player shot', function(...) self:on_player_shot(...) end),
+		conversation:listen('powerup collected', function(...) self:on_powerup_collected(...) end),
+		conversation:listen('enemy killed', function(...) self:on_enemy_killed(...) end),
+		conversation:listen('player caught', function(...) self:on_player_caught(...) end),
+		conversation:listen('thwomp landed', function(...) self:on_thwomp_landed(...) end),
+		conversation:listen('phantom spawned enemy', function(...) self:on_phantom_spawned_enemy(...) end)
+	}
+end
+
+function state.gameplay:enter()
+	self.p3d = class.p3d()
+	self:generate_web()
+	self.entities = {}
+	self.player = add(self.entities, class.player(self.web, 1))
+	self:init_stars()
+	self.score = 0
+	self.zapper_online = false
+	self.difficulty = 1
+	self:init_timers()
 	if rnd(1) > .9 then self.timer.phantom -= 5400 end
 	self.spawn_timer = 1
 	self.to_next_powerup = 3
@@ -1193,6 +1223,7 @@ function state.gameplay:draw_score()
 end
 
 function state.gameplay:draw()
+	--draw world
 	local shake = screen_shake[min(screen_shake_frame, #screen_shake)]
 	camera(shake[1], shake[2])
 	for star in all(self.stars) do star:draw(self.p3d) end
@@ -1201,6 +1232,8 @@ function state.gameplay:draw()
 		entity:draw(self.p3d)
 	end
 	camera()
+
+	-- draw hud
 	if self.zapper_online then
 		local sprite = 3
 		if self.player.caught and (uptime / 30) % 1 > .5 then
