@@ -880,6 +880,7 @@ state.gameplay = {}
 
 state.gameplay.lane_size = 16
 state.gameplay.entity_limit = 30
+state.gameplay.game_over_time = 240
 
 function state.gameplay:init_web()
 	self.web = class.web()
@@ -1005,6 +1006,7 @@ function state.gameplay:enter()
 	self.spawn_timer = 1
 	self.to_next_powerup = 3
 	self.powerup_streak = 0
+	self.game_over_timer = 0
 
 	-- cosmetic
 	self.message = ''
@@ -1143,6 +1145,14 @@ function state.gameplay:update()
 		if entity.dead then del(self.entities, entity) end
 	end
 
+	-- game over
+	if self.player.z < self.web.min_z then
+		self.game_over_timer += 1
+		if self.game_over_timer >= self.game_over_time then
+			state_manager:switch(state.game_over)
+		end
+	end
+
 	-- cosmetic
 	for star in all(self.stars) do star:update(1) end
 	local target_hx = 64 + (self.player.x - 64) * 1/6
@@ -1209,6 +1219,21 @@ function state.gameplay:draw()
 	--print(#self.entities, 0, 0, 6)
 end
 
+state.game_over = {}
+
+function state.game_over:enter()
+	sfx(-1, 0)
+	sfx(-1, 1)
+	sfx(-1, 2)
+	sfx(-1, 3)
+	music(1)
+end
+
+function state.game_over:draw()
+	print("we have you now...\n\nand we're never\nletting you go~!", 8, 33 + 2 * sin(uptime / 45), 2)
+	print("we have you now...\n\nand we're never\nletting you go~!", 8, 32 + 2 * sin(uptime / 45), 8)
+end
+
 local function apply_audio_effects()
 	poke(0x5f40, 0b1000) -- slowdown (channel 3)
 	poke(0x5f41, 0b1100) -- delay (channel 2, 3)
@@ -1217,8 +1242,7 @@ end
 
 function _init()
 	apply_audio_effects()
-	--state_manager:switch(state.gameplay)
-	music(1)
+	state_manager:switch(state.gameplay)
 end
 
 function _update60()
@@ -1306,4 +1330,3 @@ __sfx__
 __music__
 03 22216020
 00 65235224
-
