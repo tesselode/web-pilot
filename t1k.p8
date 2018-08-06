@@ -389,7 +389,7 @@ function class.web:generate()
 	local start_x = x
 	local start_y = y
 	while true do
-		self:add_point(x, y)
+		add(self.points, {x = x + 64, y = y + 64})
 		local new_x = radius * cos(angle + rnd(1/8) + tilt_x)
 		local new_y = radius * sin(angle + rnd(1/8) + tilt_y)
 		local dx = new_x - x
@@ -411,12 +411,7 @@ end
 
 function class.web:new()
 	self:generate()
-	self.closed = true
 	self.zapping = false
-end
-
-function class.web:add_point(x, y)
-	add(self.points, {x = x + 64, y = y + 64})
 end
 
 function class.web:get_position(position, height)
@@ -449,13 +444,11 @@ end
 function class.web:draw(p3d, color)
 	for i = 1, #self.points do
 		local a = self.points[i]
-		if self.closed or i < #self.points then
-			local b = i == #self.points and self.points[1] or self.points[i + 1]
-			p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, color)
-			p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, color)
-			if self.zapping then
-				p3d:line(a.x, a.y, self.zapping, b.x, b.y, self.zapping, 7)
-			end
+		local b = i == #self.points and self.points[1] or self.points[i + 1]
+		p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, color)
+		p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, color)
+		if self.zapping then
+			p3d:line(a.x, a.y, self.zapping, b.x, b.y, self.zapping, 7)
 		end
 		p3d:line(a.x, a.y, self.min_z, a.x, a.y, self.max_z, color)
 	end
