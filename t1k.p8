@@ -403,9 +403,14 @@ function class.web:generate()
 		y += dy
 		local new_angle = atan2(x, y)
 		if angle > new_angle then break end
-		local distance_from_start = sqrt((x - start_x) * (x - start_x) + (y - start_y) * (y - start_y))
-		if angle > .5 and distance_from_start < lane_size * 2/3 then break end
 		angle = new_angle
+	end
+	-- regenerate if the last lane is too wide or narrow
+	local a = self.points[1]
+	local b = self.points[#self.points]
+	local dist = sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))
+	if dist > lane_size or dist < lane_size * .9 then
+		self:generate()
 	end
 end
 
