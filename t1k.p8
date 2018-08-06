@@ -607,11 +607,10 @@ class.flipper.flip_interval = 45
 class.flipper.flip_speed = 1/20
 class.flipper.drag_speed = .00025
 
-function class.flipper:new(p3d, web, player, game_state, difficulty, small, position, z)
+function class.flipper:new(p3d, web, player, difficulty, small, position, z)
 	self.p3d = p3d
 	self.web = web
 	self.player = player
-	self.game_state = game_state
 	self.difficulty = difficulty
 	self.small = small
 	self.position = position or flr(rnd(#self.web.points)) + .5
@@ -648,11 +647,7 @@ end
 
 function class.flipper:flip()
 	self.flip_timer += self.flip_interval
-	if self.z == 1 then
-		self.flip_direction = self:get_shortest_path_to_player()
-	else
-		self.flip_direction = rnd(1) > .5 and 1 or -1
-	end
+	self.flip_direction = self.z == 1 and self:get_shortest_path_to_player() or (rnd(1) > .5 and 1 or -1)
 	self.flip_progress = 0
 end
 
@@ -662,21 +657,16 @@ function class.flipper:update()
 		self.z -= self.drag_speed
 		return
 	end
-	if self.z < self.web.min_z then
-		self.z += self.base_speed * 3
-	elseif self.z < 1 then
-		self.z += self.speed
+	if self.z < 1 then
+		self.z += (self.z < self.web.min_z and self.base_speed * 3 or self.speed)
 		if self.z > 1 then self.z = 1 end
 	end
 	if self.flip_direction == 0 and self.z > self.web.min_z then
-		if self.z == 1 then
-			self.flip_timer -= (self.small and 4 or 2) * self.difficulty
-		else
-			self.flip_timer -= (self.small and 2 or 1) * self.difficulty
-		end
-		if self.flip_timer <= 0 then
-			self:flip()
-		end
+		local timer_speed = 1
+		if self.z == 1 then timer_speed *= 2 end
+		if self.small then timer_speed *= 2 end
+		self.flip_timer -= timer_speed * self.difficulty
+		if self.flip_timer <= 0 then self:flip() end
 	end
 	if self.flip_direction ~= 0 then
 		self.flip_progress += self.flip_speed
@@ -1065,7 +1055,7 @@ end
 
 function state.gameplay:on_phantom_spawned_enemy(position, z)
 	if #self.entities < self.entity_limit then
-		add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, rnd(1) > .5, position, z))
+		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
 		sfx(sound.phantom_spit, 2)
 	end
 end
@@ -1184,10 +1174,10 @@ function state.gameplay:update()
 			self.timer.flipper -= self.difficulty
 			while self.timer.flipper <= 0 do
 				self.timer.flipper += 90 + rnd(60)
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
+				add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
 				if self.difficulty > 1.5 and rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty))
+						add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
 					end
 					self.difficulty -= .05
 				end
@@ -1196,10 +1186,10 @@ function state.gameplay:update()
 			self.timer.small_flipper -= self.difficulty
 			while self.timer.small_flipper <= 0 do
 				self.timer.small_flipper += 400 + rnd(400)
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
+				add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
 				if rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						add(self.entities, class.flipper(self.p3d, self.web, self.player, self, self.difficulty, true))
+						add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
 					end
 					self.difficulty -= .05
 				end
