@@ -511,6 +511,7 @@ end
 
 function class.player:update()
 	if self.caught then
+		if self.caught.dead then self.caught = false end -- bandaid fix for rare state bug
 		self.z = self.caught.z
 		if self.z < self.web.min_z then
 			return false
