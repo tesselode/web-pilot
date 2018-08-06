@@ -281,6 +281,15 @@ local sound = {
 	intro = 30,
 	land = 31,
 }
+local bgm = {
+	title = 0,
+	game_over = 1,
+	caught = 8,
+	thwomp_arrived = 9,
+	zapper = 10,
+	phantom_arrived = 11,
+	phantom_killed = 12,
+}
 local freeze_frames = 0
 local screen_shake = {
 	{0, 0},
@@ -731,7 +740,7 @@ function class.thwomp:update()
 	if self.z < self.web.min_z then
 		self.z += .001
 		if self.z >= self.web.min_z then
-			sfx(sound.thwomp_arrived, 2)
+			music(bgm.thwomp_arrived)
 		end
 		return
 	end
@@ -821,7 +830,7 @@ function class.phantom:update()
 
 	-- cosmetic
 	if not self.announced_entrance and self.z > self.web.min_z then
-		sfx(sound.phantom_arrived, 2)
+		music(bgm.phantom_arrived)
 		self.announced_entrance = true
 	end
 	if self.flash_timer > 0 then self.flash_timer -= 1 end
@@ -830,7 +839,7 @@ end
 function class.phantom:die()
 	self.dead = true
 	conversation:say('enemy killed', self)
-	sfx(sound.phantom_killed, 2)
+	music(bgm.phantom_killed)
 	freeze_frames += 4
 	screen_shake_frame += 4
 end
@@ -1030,7 +1039,7 @@ end
 
 function state.gameplay:on_player_caught()
 	self:show_message(threats[ceil(rnd(#threats))], 8)
-	sfx(sound.caught, 1)
+	music(bgm.caught)
 end
 
 function state.gameplay:on_thwomp_landed()
@@ -1107,7 +1116,7 @@ function state.gameplay:zap()
 	if self.difficulty < 1 then self.difficulty = 1 end
 	self.powerup_streak = 0
 	self:show_message 'eat electric death!'
-	sfx(sound.zapper, 1)
+	music(bgm.zapper)
 end
 
 function state.gameplay:update()
@@ -1324,7 +1333,7 @@ end
 state.title = {}
 
 function state.title:enter()
-	music(0)
+	music(bgm.title)
 	self.p3d = class.p3d()
 	self.p3d.oz = -1
 	self.web = class.web()
@@ -1438,7 +1447,7 @@ function state.game_over:enter()
 	sfx(-1, 1)
 	sfx(-1, 2)
 	sfx(-1, 3)
-	music(1)
+	music(bgm.game_over)
 end
 
 function state.game_over:draw()
@@ -1560,3 +1569,15 @@ __sfx__
 __music__
 03 22216020
 00 65235224
+00 41424344
+00 41424344
+00 41424344
+00 41424344
+00 41424344
+00 41424344
+04 410d4344
+04 41511144
+04 41154344
+04 41561644
+00 41581844
+00 415b4344
