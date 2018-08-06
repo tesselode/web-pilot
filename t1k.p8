@@ -1091,6 +1091,7 @@ function state.gameplay:enter(web)
 	self.message_color = 12
 	self.rolling_score = self.score
 	sfx(sound.intro, 2)
+	self:show_message('approaching destination', 11)
 
 	self:init_listeners()
 end
@@ -1135,7 +1136,7 @@ function state.gameplay:update()
 	-- intro sequence
 	if self.intro then
 		self.p3d.oz += .0025
-		self.player.z = 1 - self.p3d.oz
+		self.player.z = 1 - self.p3d.oz + 1/5 * (self.p3d.oz * self.p3d.oz)
 		if self.p3d.oz >= 0 then
 			self.p3d.oz = 0
 			self.player.z = 1
@@ -1251,9 +1252,9 @@ function state.gameplay:update()
 	for star in all(self.stars) do star:update(1) end
 	local target_hx = 64 + (self.player.x - 64) * 1/6
 	local target_hy = 64 + (self.player.y - 64) * 1/6
-	self.p3d.hx += (target_hx - self.p3d.hx) * .1
-	self.p3d.hy += (target_hy - self.p3d.hy) * .1
 	if not self.intro then
+		self.p3d.hx += (target_hx - self.p3d.hx) * .1
+		self.p3d.hy += (target_hy - self.p3d.hy) * .1
 		self.p3d.oz = -(self.player.z - 1) / 3
 	end
 
@@ -1335,7 +1336,7 @@ state.title = {}
 function state.title:enter()
 	music(bgm.title)
 	self.p3d = class.p3d()
-	self.p3d.oz = -1
+	self.p3d.oz = -2/3
 	self.web = class.web()
 	self.stars = {}
 	for i = 1, 50 do add(self.stars, class.star()) end
@@ -1343,7 +1344,7 @@ function state.title:enter()
 	self.web_alpha = 1
 
 	self.state = 0
-	self.hy_offset = 0
+	self.title_oy = 0
 	self.option_selected = 1
 	self.changing_web = false
 end
@@ -1383,20 +1384,25 @@ function state.title:update()
 			sfx(sound.menu_back, 1)
 		end
 	elseif self.state == 2 then
-		self.p3d.oz -= .01
+		self.p3d.oz -= 1/60
 		if self.p3d.oz < -1 then
 			state_manager:switch(state.gameplay, self.web)
 		end
 	end
 
 	-- cosmetic
-	local target_hy_offset = self.state == 1 and 48 or 0
-	self.hy_offset += (target_hy_offset - self.hy_offset) * .1
+	local target_title_oy = self.state == 1 and -40 or 0
+	self.title_oy += (target_title_oy - self.title_oy) * .1
 	for star in all(self.stars) do star:update(1) end
-	self.p3d.hx = 64 + 4 * sin(uptime / 240)
-	self.p3d.hy = 64 + self.hy_offset + 4 * cos(uptime / 300)
+	if self.state == 2 then
+		self.p3d.hx += (64 - self.p3d.hx) * .5
+		self.p3d.hy += (64 - self.p3d.hy) * .5
+	else
+		self.p3d.hx = 64 + 4 * sin(uptime / 240)
+		self.p3d.hy = 64 + 4 * cos(uptime / 300)
+	end
 	if self.state == 0 or self.state == 1 then
-		self.p3d.oz -= self.p3d.oz * .01
+		self.p3d.oz -= self.p3d.oz * .025
 	end
 	if self.p3d.oz > -.001 then self.p3d.oz = 0 end
 	if self.p3d.oz > -.025 then
@@ -1420,14 +1426,15 @@ function state.title:draw()
 	for star in all(self.stars) do star:draw(self.p3d) end
 	self.web:draw(self.p3d, self.web_alpha < 1/2 and 0 or self.web_alpha < 2/3 and 1 or 3)
 	local x = 64 + 3.99 * sin(uptime / 480)
+	local y = 64 + self.title_oy
 	pal(7, 1)
 	pal(10, 2)
-	self.p3d:sspr(0, 32, 49, 16, x, 64, self.web.min_z + (self.title_z - self.web.min_z) * .98, 2)
+	self.p3d:sspr(0, 32, 49, 16, x, y, self.web.min_z + (self.title_z - self.web.min_z) * .98, 2)
 	pal(7, 13)
 	pal(10, 8)
-	self.p3d:sspr(0, 32, 49, 16, x, 64, self.web.min_z + (self.title_z - self.web.min_z) * .99, 2)
+	self.p3d:sspr(0, 32, 49, 16, x, y, self.web.min_z + (self.title_z - self.web.min_z) * .99, 2)
 	pal()
-	self.p3d:sspr(0, 32, 49, 16, x, 64, self.title_z, 2)
+	self.p3d:sspr(0, 32, 49, 16, x, y, self.title_z, 2)
 
 	if self.state == 0 and self.title_z == 1 then
 		printoc('mmxviii tesselode', 64, 88, 5, 0)
@@ -1435,9 +1442,9 @@ function state.title:draw()
 	end
 	if self.state == 1 then
 		local color = self.option_selected == 1 and 11 or 5
-		printoc('play', 64, 96, color, 0)
+		printoc('play', 64, 104, color, 0)
 		color = self.option_selected == 2 and 11 or 5
-		printoc('change destination', 64, 104, color, 0)
+		printoc('change destination', 64, 112, color, 0)
 	end
 end
 
