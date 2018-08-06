@@ -524,6 +524,7 @@ function class.player:update()
 	if self.stun_timer == 0 then
 		local acceleration = self.acceleration
 		if self.caught then acceleration /= 3 end
+		if dget(32) == 1 then acceleration *= -1 end
 		if btn(0) then self.velocity -= acceleration end
 		if btn(1) then self.velocity += acceleration end
 		self.velocity -= self.velocity * self.friction
@@ -1083,12 +1084,16 @@ function state.gameplay:init_listeners()
 	}
 end
 
+
 function state.gameplay:init_menu_items()
 	menuitem(1, 'retry (same web)', function()
 		state_manager:switch(state.gameplay, state.gameplay.web)
 	end)
 	menuitem(2, 'back to menu', function()
 		state_manager:switch(state.title, true)
+	end)
+	menuitem(3, 'invert controls', function()
+		dset(32, dget(32) == 0 and 1 or 0)
 	end)
 end
 
@@ -1311,6 +1316,7 @@ function state.gameplay:leave()
 	end
 	menuitem(1)
 	menuitem(2)
+	menuitem(3)
 end
 
 function state.gameplay:draw_score()
@@ -1393,7 +1399,7 @@ function state.title:update()
 			end
 		end
 		if btnp(3) then
-			if self.option_selected < 2 then
+			if self.option_selected < 3 then
 				self.option_selected += 1
 				sfx(sound.menu_move, 1)
 			end
@@ -1407,6 +1413,14 @@ function state.title:update()
 			if self.option_selected == 2 and not self.changing_web then
 				sfx(sound.menu_select, 1)
 				self.changing_web = true
+			end
+			if self.option_selected == 3 then
+				sfx(sound.menu_select, 1)
+				if dget(32) == 0 then
+					dset(32, 1)
+				else
+					dset(32, 0)
+				end
 			end
 		end
 		if btnp(5) then
@@ -1475,6 +1489,13 @@ function state.title:draw()
 		printoc('play', 64, 104, color, 0)
 		color = self.option_selected == 2 and 11 or 5
 		printoc('change destination', 64, 112, color, 0)
+		color = self.option_selected == 3 and 11 or 5
+		if dget(32) == 0 then
+			printoc('controls: normal', 64, 120, color, 0)
+		end
+		if dget(32) == 1 then
+			printoc('controls: inverted', 64, 120, color, 0)
+		end
 		printoc('hi score: ' .. to_padded_score(dget(0)), 64, 2, 12, 0)
 	end
 end
