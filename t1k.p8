@@ -306,6 +306,10 @@ local bgm = {
 	phantom_arrived = 11,
 	phantom_killed = 12,
 }
+local save_data_id = {
+	high_score = 0,
+	control_direction = 32,
+}
 local freeze_frames = 0
 local screen_shake = {
 	{0, 0},
@@ -524,7 +528,7 @@ function class.player:update()
 	if self.stun_timer == 0 then
 		local acceleration = self.acceleration
 		if self.caught then acceleration /= 3 end
-		if dget(32) == 1 then acceleration *= -1 end
+		if dget(save_data_id.control_direction) == 1 then acceleration *= -1 end
 		if btn(0) then self.velocity -= acceleration end
 		if btn(1) then self.velocity += acceleration end
 		self.velocity -= self.velocity * self.friction
@@ -1093,7 +1097,7 @@ function state.gameplay:init_menu_items()
 		state_manager:switch(state.title, true)
 	end)
 	menuitem(3, 'invert controls', function()
-		dset(32, dget(32) == 0 and 1 or 0)
+		dset(save_data_id.control_direction, dget(save_data_id.control_direction) == 0 and 1 or 0)
 	end)
 end
 
@@ -1416,11 +1420,7 @@ function state.title:update()
 			end
 			if self.option_selected == 3 then
 				sfx(sound.menu_select, 1)
-				if dget(32) == 0 then
-					dset(32, 1)
-				else
-					dset(32, 0)
-				end
+				dset(save_data_id.control_direction, dget(save_data_id.control_direction) == 0 and 1 or 0)
 			end
 		end
 		if btnp(5) then
@@ -1490,13 +1490,13 @@ function state.title:draw()
 		color = self.option_selected == 2 and 11 or 5
 		printoc('change destination', 64, 112, color, 0)
 		color = self.option_selected == 3 and 11 or 5
-		if dget(32) == 0 then
+		if dget(save_data_id.control_direction) == 0 then
 			printoc('controls: normal', 64, 120, color, 0)
 		end
-		if dget(32) == 1 then
+		if dget(save_data_id.control_direction) == 1 then
 			printoc('controls: inverted', 64, 120, color, 0)
 		end
-		printoc('hi score: ' .. to_padded_score(dget(0)), 64, 2, 12, 0)
+		printoc('hi score: ' .. to_padded_score(dget(save_data_id.high_score)), 64, 2, 12, 0)
 	end
 end
 
@@ -1527,9 +1527,9 @@ state.results = {}
 
 function state.results:enter()
 	self.score = state.gameplay.score
-	if self.score > dget(0) then
+	if self.score > dget(save_data_id.high_score) then
 		self.high_score = true
-		dset(0, self.score)
+		dset(save_data_id.high_score, self.score)
 	end
 	self.score_roll_timer = 40
 	self.menu_timer = 40
