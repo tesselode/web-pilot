@@ -450,6 +450,7 @@ function class.web:draw(p3d, color)
 	for i = 1, #self.points do
 		local a = self.points[i]
 		local b = i == #self.points and self.points[1] or self.points[i + 1]
+		p3d:line(a.x, a.y, self.max_z, a.x, a.y, 1.2, 1)
 		p3d:line(a.x, a.y, self.min_z, b.x, b.y, self.min_z, color)
 		p3d:line(a.x, a.y, self.max_z, b.x, b.y, self.max_z, color)
 		if self.zapping then
@@ -1675,4 +1676,3 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
-
