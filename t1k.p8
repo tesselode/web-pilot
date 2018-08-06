@@ -732,13 +732,9 @@ function class.thwomp:jump()
 	self.jumping = true
 	self.vh = self.jump_power
 	self.vp = -.1 + rnd(.2)
-	if self.z < self.web.min_z + .01 then
-		self.vz = .0002
-	elseif self.z > .99 then
-		self.vz = -.0002
-	else
-		self.vz = -.0002 + rnd(.0002)
-	end
+	self.vz = self.z < self.web.min_z + .01 and .0002
+		or self.z > .99 and .0002
+		or -.0002 + rnd(.0002)
 	sfx(sound.jump, 2)
 end
 
@@ -764,9 +760,7 @@ function class.thwomp:update()
 		end
 	else
 		self.jump_timer -= self.difficulty / 2
-		if self.jump_timer <= 0 then
-			self:jump()
-		end
+		if self.jump_timer <= 0 then self:jump() end
 	end
 
 	-- cosmetic
@@ -825,7 +819,7 @@ function class.phantom:update()
 	self.h += .01 * cos(self.uptime / 170)
 	self.z += (.975 - self.z) * .01
 	self.z += .0002 * sin(self.uptime / 200)
-	if self.z > .98 then self.z = .98 end
+	self.z = min(self.z, .98)
 	if self.z > .96 then
 		self.spawn_timer -= self.difficulty / 3
 		while self.spawn_timer <= 0 do
@@ -908,9 +902,7 @@ end
 
 function class.particle:update()
 	self.life -= 1
-	if self.life == 0 then
-		self.dead = true
-	end
+	if self.life == 0 then self.dead = true end
 	self.speed -= .1
 	self.r -= .1
 	self.x += self.speed * cos(self.direction)
@@ -958,9 +950,7 @@ function class.score_popup:update()
 	self.vy -= .01
 	self.y -= self.vy
 	self.life -= 1
-	if self.life <= 0 then
-		self.dead = true
-	end
+	if self.life <= 0 then self.dead = true end
 end
 
 function class.score_popup:draw()
@@ -1145,7 +1135,7 @@ function state.gameplay:update()
 	self.wait_for_update = false
 
 	-- game feel
-	if freeze_frames > 6 then freeze_frames = 6 end
+	freeze_frames = min(freeze_frames, 6)
 	if freeze_frames > 0 then
 		freeze_frames -= 1
 		return
@@ -1333,18 +1323,12 @@ function state.gameplay:draw()
 		end
 		spr(sprite, 120, 120)
 		if self.player.caught and not self.doomed then
-			local color = 9
-			if (uptime / 30) % 1 > .5 then
-				color = 7
-			end
+			local color = (uptime / 30) % 1 > .5 and 7 or 9
 			printor("press ❎ to use ", 120, 121, color)
 		end
 	end
 	if self.message_timer > 0 then
-		local color = self.message_color
-		if (uptime / 30) % 1 > .5 then
-			color = 7
-		end
+		local color = (uptime / 30) % 1 > .5 and 7 or self.message_color
 		printoc(self.message, 64, self.message_y, color)
 	end
 	self:draw_score()
@@ -1428,7 +1412,7 @@ function state.title:update()
 		self.p3d.hx = 64 + 4 * sin(uptime / 240)
 		self.p3d.hy = 64 + 4 * cos(uptime / 300)
 	end
-	if self.state == 0 or self.state == 1 then
+	if self.state ~= 2 then
 		self.p3d.oz -= self.p3d.oz * .025
 	end
 	if self.p3d.oz > -.001 then self.p3d.oz = 0 end
@@ -1522,8 +1506,7 @@ end
 function state.results:update()
 	self.score_roll_timer -= 1
 	if self.score_roll_timer <= 0 and self.rolling_score < self.score then
-		local increment = (self.score - self.rolling_score) * .1
-		self.rolling_score += increment
+		self.rolling_score += (self.score - self.rolling_score) * .1
 		sfx(sound.score_roll, 1)
 		if self.rolling_score > self.score - .1 then
 			self.rolling_score = self.score
@@ -1532,9 +1515,7 @@ function state.results:update()
 	if self.rolling_score == self.score and self.menu_timer > 0 then
 		self.menu_timer -= 1
 		if self.menu_timer == 0 then
-			if self.high_score then
-				music(bgm.high_score)
-			end
+			if self.high_score then music(bgm.high_score) end
 		end
 	end
 	if self.menu_timer == 0 then
@@ -1583,7 +1564,6 @@ end
 function _draw()
 	cls()
 	state_manager:call 'draw'
-	--print(flr(stat(1) * 200), 0, 0, 7)
 end
 __gfx__
 0000000000000cccccc00000000ea000000f70000000099999900000000000000000000000000000000000000000000000000000000000000000000000000000
