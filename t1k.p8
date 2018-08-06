@@ -59,6 +59,18 @@ local function wrap(x, limit)
 	return x
 end
 
+local function to_padded_score(score)
+	if score == 0 then
+		return '0'
+	elseif score % 1 == 0 then
+		return score .. '00'
+	elseif score > 1 then
+		return flr(score) .. sub(tostr(score % 1), 3, 4)
+	else
+		return sub(tostr(score % 1), 3, 4)
+	end
+end
+
 local state_manager = {}
 
 function state_manager:call(event, ...)
@@ -222,6 +234,7 @@ end
 -->8
 -- resources
 
+cartdata 'tesselode_web_pilot'
 local uptime = 0
 local state = {}
 local model = {
@@ -280,11 +293,13 @@ local sound = {
 	menu_select = 29,
 	intro = 30,
 	land = 31,
+	score_roll = 48,
 }
 local bgm = {
 	title = 0,
 	game_over = 1,
 	doomed = 2,
+	high_score = 3,
 	caught = 8,
 	thwomp_arrived = 9,
 	zapper = 10,
@@ -535,7 +550,7 @@ function class.player:update()
 			self.overheat = false
 		end
 	end
-	if self.reload_timer <= 0 and not self.overheat and btn(4) then
+	if self.reload_timer <= 0 and not self.overheat and btn(4) and not state.gameplay.intro then
 		self:shoot()
 	end
 end
@@ -552,6 +567,7 @@ function class.player:draw(p3d)
 	if self.stun_timer > 0 then
 		z += .004 * (self.stun_timer / self.stun_time) * sin(uptime * .2)
 	end
+	assert(not state.gameplay.wait_for_update, "this shouldn't happen. if you see this error, let me know on twitter @tesselode")
 	local r = atan2(self.x - 64, self.y - 64) + self.velocity * (2/3)
 	color = self.stun_timer > 0 and 13 or 10
 	model.player:draw(p3d, self.x, self.y, z, r, 8, 8, 1, color)
@@ -1278,21 +1294,16 @@ function state.gameplay:update()
 	end
 end
 
+function state.gameplay:leave()
+	for listener in all(self.listeners) do
+		conversation:deafen(listener)
+	end
+end
+
 function state.gameplay:draw_score()
 	local y = 2 + 2 * (self.score - self.rolling_score)
 	if y > 6 then y = 6 end
-	if self.score == 0 then
-		printoc('0', 64, y, 11)
-	elseif self.rolling_score % 1 == 0 then
-		printoc(self.rolling_score .. '00', 64, y, 11)
-	else
-		local score_string = ''
-		if self.rolling_score > 1 then
-			score_string = score_string .. flr(self.rolling_score)
-		end
-		score_string = score_string .. sub(tostr(self.rolling_score % 1), 3, 4)
-		printoc(score_string, 64, y, 11)
-	end
+	printoc(to_padded_score(self.rolling_score), 64, y, 11)
 end
 
 function state.gameplay:draw()
@@ -1339,17 +1350,17 @@ end
 
 state.title = {}
 
-function state.title:enter()
+function state.title:enter(quick)
 	music(bgm.title)
 	self.p3d = class.p3d()
-	self.p3d.oz = -2/3
+	self.p3d.oz = quick and -1/6 or -2/3
 	self.web = class.web()
 	self.stars = {}
 	for i = 1, 50 do add(self.stars, class.star()) end
 	self.title_z = 0
 	self.web_alpha = 1
 
-	self.state = 0
+	self.state = quick and 1 or 0
 	self.title_oy = 0
 	self.option_selected = 1
 	self.changing_web = false
@@ -1451,6 +1462,7 @@ function state.title:draw()
 		printoc('play', 64, 104, color, 0)
 		color = self.option_selected == 2 and 11 or 5
 		printoc('change destination', 64, 112, color, 0)
+		printoc('hi score: ' .. to_padded_score(dget(0)), 64, 2, 12, 0)
 	end
 end
 
@@ -1462,6 +1474,14 @@ function state.game_over:enter()
 	sfx(-1, 2)
 	sfx(-1, 3)
 	music(bgm.game_over)
+	self.timer = 240
+end
+
+function state.game_over:update()
+	self.timer -= 1
+	if self.timer == 0 then
+		state_manager:switch(state.results)
+	end
 end
 
 function state.game_over:draw()
@@ -1469,14 +1489,69 @@ function state.game_over:draw()
 	print("we have you now...\n\nand we're never\nletting you go~!", 8, 32 + 2 * sin(uptime / 45), 8)
 end
 
+state.results = {}
+
+function state.results:enter()
+	self.score = state.gameplay.score
+	if self.score > dget(0) then
+		self.high_score = true
+		dset(0, self.score)
+	end
+	self.score_roll_timer = 40
+	self.menu_timer = 40
+	self.rolling_score = 0
+end
+
+function state.results:update()
+	self.score_roll_timer -= 1
+	if self.score_roll_timer <= 0 and self.rolling_score < self.score then
+		local increment = (self.score - self.rolling_score) * .1
+		self.rolling_score += increment
+		sfx(sound.score_roll, 1)
+		if self.rolling_score > self.score - .1 then
+			self.rolling_score = self.score
+		end
+	end
+	if self.rolling_score == self.score and self.menu_timer > 0 then
+		self.menu_timer -= 1
+		if self.menu_timer == 0 then
+			if self.high_score then
+				music(bgm.high_score)
+			end
+		end
+	end
+	if self.menu_timer == 0 then
+		if btnp(4) then state_manager:switch(state.gameplay, state.gameplay.web) end
+		if btnp(5) then state_manager:switch(state.title, true) end
+	end
+end
+
+function state.results:draw()
+	printc('your score:', 64, 49, 1)
+	printc('your score:', 64, 48, 12)
+	printc(to_padded_score(self.rolling_score), 64, 57, 5)
+	printc(to_padded_score(self.rolling_score), 64, 56, 7)
+	if self.high_score and self.menu_timer == 0 then
+		local y = 72 + 2.99 * sin(uptime / 100)
+		printc('new high score!', 64, y + 1, 2)
+		printc('new high score!', 64, y, 14)
+	end
+	if self.menu_timer == 0 then
+		printc('🅾️ retry same web', 64, 97, 5)
+		printc('🅾️ retry same web', 64, 96, 7)
+		printc('❎ back to menu', 64, 105, 5)
+		printc('❎ back to menu', 64, 104, 7)
+	end
+end
+
+-->8
+-- main loop
+
 local function apply_audio_effects()
 	poke(0x5f40, 0b1000) -- slowdown (channel 3)
 	poke(0x5f41, 0b1100) -- delay (channel 2, 3)
 	poke(0x5f43, 0b1000) -- distortion (channel 0)
 end
-
--->8
--- main loop
 
 function _init()
 	apply_audio_effects()
@@ -1580,12 +1655,23 @@ __sfx__
 011000001194011940119401194011940119401194011940119401194011940119401194011940119401194011940119401194011940119301193011930119301192011920119201192011910119101191011910
 010b0000358723687632872318722c8722b8762987228872258722487622872218721c872198761d8721d8721d8721d8721d8721d8721d8721d8721d8721d87200a0000a0000a0000a0000000000000000000000
 011000000c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c9300c930
-011000002485025850298502b8502485025850298502b8502485025850298502b8502485025850298502b8502485025850298502b8502485025850298502b8502485025850298502b8502485025850298502b850
+010800002485025856298502b8502485625850298502b8562485025850298562b8502485025856298502b8502485625850298502b8562485025850298562b8502485025856298502b8502485625850298502b856
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+010500002c05531055000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000
+01090000190501e050200501b05020050220501d0502205024050290502d0502d0422d03200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __music__
 03 22216020
 04 65235224
-03 41256626
-00 41424344
+03 41256666
+04 41314344
 00 41424344
 00 41424344
 00 41424344
@@ -1596,4 +1682,3 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
-
