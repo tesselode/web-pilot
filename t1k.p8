@@ -209,7 +209,7 @@ function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
 	for i = 1, #self.points - 1 do
 		local a = self.points[i]
 		local b = self.points[i+1]
-		local ax, ay, az = a.x, a.y, a.z
+		local ax, ay, az = a[1], a[2], a[3]
 		ax, ay = c * ax - s * ay, s * ax + c * ay
 		ax *= sx
 		ay *= sy
@@ -217,7 +217,7 @@ function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
 		ax += x
 		ay += y
 		az += z
-		local bx, by, bz = b.x, b.y, b.z
+		local bx, by, bz = b[1], b[2], b[3]
 		bx, by = c * bx - s * by, s * bx + c * by
 		bx *= sx
 		by *= sy
@@ -239,33 +239,33 @@ local uptime = 0
 local state = {}
 local model = {
 	player = class.model {
-		{x = -1, y = 0, z = 1/72},
-		{x = 0, y = -1, z = 1/72},
-		{x = 1, y = 0, z = 1/72},
-		{x = 0, y = 1, z = 1/72},
-		{x = -1, y = 0, z = 1/72},
-		{x = 0, y = 0, z = -1/72},
-		{x = 1, y = 0, z = 1/72},
-		{x = 0, y = 1, z = 1/72},
-		{x = 0, y = 0, z = -1/72},
-		{x = 0, y = -1, z = 1/72},
+		{-1, 0, 1/72},
+		{0, -1, 1/72},
+		{1, 0, 1/72},
+		{0, 1, 1/72},
+		{-1, 0, 1/72},
+		{0, 0, -1/72},
+		{1, 0, 1/72},
+		{0, 1, 1/72},
+		{0, 0, -1/72},
+		{0, -1, 1/72},
 	},
 	flipper = class.model {
-		{x = -1, y = -1, z = 0},
-		{x = 1, y = 1, z = 0},
-		{x = 1, y = -1, z = 0},
-		{x = -1, y = 1, z = 0},
-		{x = -1, y = -1, z = 0},
+		{-1, -1, 0},
+		{1, 1, 0},
+		{1, -1, 0},
+		{-1, 1, 0},
+		{-1, -1, 0},
 	},
 	thwomp = class.model {
-		{x = -1, y = 1, z = 0},
-		{x = 1, y = 1, z = 0},
-		{x = 2/3, y = -1, z = 0},
-		{x = -2/3, y = -1, z = 0},
-		{x = -1, y = 1, z = 0},
-		{x = 2/3, y = -1, z = 0},
-		{x = -2/3, y = -1, z = 0},
-		{x = 1, y = 1, z = 0},
+		{-1, 1, 0},
+		{1, 1, 0},
+		{2/3, -1, 0},
+		{-2/3, -1, 0},
+		{-1, 1, 0},
+		{2/3, -1, 0},
+		{-2/3, -1, 0},
+		{1, 1, 0},
 	}
 }
 local sound = {
