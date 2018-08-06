@@ -1315,7 +1315,7 @@ function state.gameplay:draw()
 			end
 			printor("press ❎ to use ", 120, 121, color)
 		end
- end
+	end
 	if self.message_timer > 0 then
 		local color = self.message_color
 		if (uptime / 30) % 1 > .5 then
@@ -1430,12 +1430,13 @@ function state.title:draw()
 	self.p3d:sspr(0, 32, 49, 16, x, 64, self.title_z, 2)
 
 	if self.state == 0 and self.title_z == 1 then
+		printoc('mmxviii tesselode', 64, 88, 5, 0)
 		printoc('press 🅾️ to start', 64, 96, 11, 0)
 	end
 	if self.state == 1 then
-		local color = self.option_selected == 1 and 11 or 3
+		local color = self.option_selected == 1 and 11 or 5
 		printoc('play', 64, 96, color, 0)
-		color = self.option_selected == 2 and 11 or 3
+		color = self.option_selected == 2 and 11 or 5
 		printoc('change destination', 64, 104, color, 0)
 	end
 end
