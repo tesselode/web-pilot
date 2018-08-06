@@ -1323,11 +1323,11 @@ function state.gameplay:draw()
 	-- draw hud
 	if self.zapper_online then
 		local sprite = 3
-		if self.player.caught and (uptime / 30) % 1 > .5 then
+		if self.player.caught and (uptime / 30) % 1 > .5 and not self.doomed then
 			sprite = 4
 		end
 		spr(sprite, 120, 120)
-		if self.player.caught then
+		if self.player.caught and not self.doomed then
 			local color = 9
 			if (uptime / 30) % 1 > .5 then
 				color = 7
