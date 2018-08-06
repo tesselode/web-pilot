@@ -1083,6 +1083,15 @@ function state.gameplay:init_listeners()
 	}
 end
 
+function state.gameplay:init_menu_items()
+	menuitem(1, 'retry (same web)', function()
+		state_manager:switch(state.gameplay, state.gameplay.web)
+	end)
+	menuitem(2, 'back to menu', function()
+		state_manager:switch(state.title, true)
+	end)
+end
+
 function state.gameplay:enter(web)
 	self.p3d = class.p3d()
 	self.p3d.oz = -2/3
@@ -1113,6 +1122,7 @@ function state.gameplay:enter(web)
 	self:show_message('approaching destination', 11)
 
 	self:init_listeners()
+	self:init_menu_items()
 end
 
 function state.gameplay:is_colliding(a, b)
@@ -1299,6 +1309,8 @@ function state.gameplay:leave()
 	for listener in all(self.listeners) do
 		conversation:deafen(listener)
 	end
+	menuitem(1)
+	menuitem(2)
 end
 
 function state.gameplay:draw_score()
