@@ -1272,8 +1272,8 @@ function state.gameplay:update()
 end
 
 function state.gameplay:draw_score()
-	local y = 1 + 2 * (self.score - self.rolling_score)
-	if y > 5 then y = 5 end
+	local y = 2 + 2 * (self.score - self.rolling_score)
+	if y > 6 then y = 6 end
 	if self.score == 0 then
 		printoc('0', 64, y, 11)
 	elseif self.rolling_score % 1 == 0 then
