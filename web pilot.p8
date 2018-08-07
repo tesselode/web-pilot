@@ -1107,7 +1107,7 @@ function state.gameplay:enter(web)
 	self.rolling_score = self.score
 	self.doomed = false
 	sfx(sound.intro, 2)
-	self:show_message('approaching destination', 11)
+	self:show_message('arriving at destination', 11)
 
 	self:init_listeners()
 	self:init_menu_items()
@@ -1676,3 +1676,4 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
+
