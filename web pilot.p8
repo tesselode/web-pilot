@@ -585,15 +585,20 @@ class.player_bullet.speed = .0067
 
 function class.player_bullet:new(web, position, z)
 	self.web = web
-	self.position = flr(position) + .5
+	self.position = position
 	self.z = z
+	self.first_frame = true
 end
 
 function class.player_bullet:update()
+	if not self.first_frame then
+		self.position += (flr(self.position) + .5 - self.position) / 3
+	end
 	self.z -= self.speed
 	if self.z <= self.web.min_z then
 		self.dead = true
 	end
+	self.first_frame = false
 end
 
 function class.player_bullet:collide(other)
@@ -1678,4 +1683,3 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
-
