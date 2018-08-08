@@ -601,7 +601,9 @@ function class.player_bullet:collide(other)
 end
 
 function class.player_bullet:draw(p3d)
+	p3d:line(self.x - 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
 	p3d:line(self.x, self.y, self.z, self.x, self.y, self.z + .01, 10)
+	p3d:line(self.x + 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
 end
 
 class.enemy = class.physical:extend()
