@@ -600,6 +600,7 @@ function class.player:draw(p3d)
 		z += .004 * (self.stun_timer / self.stun_time) * sin(uptime * .2)
 	end
 	assert(not state.gameplay.wait_for_update, "this shouldn't happen. if you see this error, let me know on twitter @tesselode")
+	assert(self.position, "huh????")
 	local r = atan2(self.x - 64, self.y - 64) + self.velocity * (2/3)
 	color = self.stun_timer > 0 and 13 or 10
 	model.player:draw(p3d, self.x, self.y, z, r, 8, 8, 1, color)
@@ -978,10 +979,11 @@ end
 
 class.score_popup = object:extend()
 
-function class.score_popup:new(text, x, y)
+function class.score_popup:new(text, x, y, color)
 	self.text = text
 	self.x = x
 	self.y = y
+	self.color = color
 	self.life = 40
 	self.vy = .5
 end
@@ -994,7 +996,7 @@ function class.score_popup:update()
 end
 
 function class.score_popup:draw()
-	local color = self.life / 15 % 1 < .5 and 12 or 7
+	local color = self.life / 15 % 1 < .5 and self.color or 7
 	printc(self.text, self.x, self.y, color)
 end
 
@@ -1056,12 +1058,20 @@ function state.gameplay:on_enemy_killed(enemy)
 	end
 	if not self.player.jumping and not self.web.zapping then
 		local point_value = enemy.point_value
-		if enemy.z == 1 then
-			point_value *= 3
-			sfx(sound.rim_kill, 1)
+		local color = 12
+		if enemy:is(class.flipper) then
+			if enemy.z < self.web.min_z + (1 - self.web.min_z) / 3 then
+				point_value *= 2
+				color = 14
+			elseif enemy.z == 1 then
+				point_value *= 3
+				sfx(sound.rim_kill, 1)
+				color = 11
+			end
 		end
 		self.score += point_value
-		add(self.entities, class.score_popup(point_value .. '00', self.p3d:to2d(enemy.x, enemy.y, enemy.z)))
+		local x, y = self.p3d:to2d(enemy.x, enemy.y, enemy.z)
+		add(self.entities, class.score_popup(point_value .. '00', x, y, color))
 	end
 	if enemy:is(class.thwomp) then self.difficulty += .1 end
 	if enemy:is(class.phantom) then self.difficulty += 1/3 end
