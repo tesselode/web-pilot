@@ -1174,6 +1174,14 @@ end
 function state.gameplay:update()
 	self.wait_for_update = false
 
+	-- input
+	if not self.intro then
+		if btnp(5) then self.player:jump() end
+		if btnp(5) and self.player.caught and self.zapper_online then
+			self:zap()
+		end
+	end
+
 	-- game feel
 	freeze_frames = min(freeze_frames, 6)
 	if freeze_frames > 0 then
@@ -1244,12 +1252,6 @@ function state.gameplay:update()
 				self.difficulty -= 1/3
 				sfx(sound.spawn, 3)
 			end
-		end
-
-		-- input
-		if btnp(5) then self.player:jump() end
-		if btnp(5) and self.player.caught and self.zapper_online then
-			self:zap()
 		end
 	end
 
