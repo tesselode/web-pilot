@@ -1367,6 +1367,7 @@ function state.title:enter(quick)
 	for i = 1, 50 do add(self.stars, class.star()) end
 	self.title_z = 0
 	self.web_alpha = 1
+	self.title_uptime = 0
 
 	self.state = quick and 1 or 0
 	self.title_oy = 0
@@ -1411,6 +1412,7 @@ function state.title:update()
 		if btnp(5) then
 			self.state = 0
 			sfx(sound.menu_back, 1)
+			self.title_uptime = 0
 		end
 	elseif self.state == 2 then
 		self.p3d.oz -= 1/60
@@ -1423,6 +1425,9 @@ function state.title:update()
 	local target_title_oy = self.state == 1 and -40 or 0
 	self.title_oy += (target_title_oy - self.title_oy) * .1
 	for star in all(self.stars) do star:update(1) end
+	if self.state == 0 and self.title_z == 1 then
+		self.title_uptime += 1
+	end
 	if self.state == 2 then
 		self.p3d.hx += (64 - self.p3d.hx) * .5
 		self.p3d.hy += (64 - self.p3d.hy) * .5
@@ -1464,8 +1469,16 @@ function state.title:draw()
 	self.p3d:sspr(0, 32, 33, 14, x, y, self.title_z, 2)
 
 	if self.state == 0 and self.title_z == 1 then
-		printoc('mmxviii tesselode', 64, 88, 5, 0)
-		printoc('press 🅾️ to start', 64, 96, 11, 0)
+		if (self.title_uptime / 1250) % 1 < 1/3 then
+			printoc('mmxviii tesselode', 64, 88, 6, 0)
+			printoc('press 🅾️ to start', 64, 96, 11, 0)
+		elseif (self.title_uptime / 1250) % 1 < 2/3 then
+			printoc('a remix of the tempest games', 64, 88, 6, 0)
+			printoc('by dave theurer and jeff minter', 64, 96, 6, 0)
+		else
+			printoc('⬅️➡️ move', 64, 88, 6, 0)
+			printoc('🅾️ shoot    ❎ jump / zap', 64, 96, 6, 0)
+		end
 	end
 	if self.state == 1 then
 		local color = self.option_selected == 1 and 11 or 5
