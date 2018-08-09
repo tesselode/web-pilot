@@ -936,7 +936,7 @@ function class.star:new()
 end
 
 function class.star:update(speed)
-	self.z += .001 * speed
+	self.z += .0002 * speed
 	if self.z >= 1.2 then
 		local angle = rnd(1)
 		self.x = 64 + 128 * cos(angle)
