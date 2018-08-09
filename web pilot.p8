@@ -381,6 +381,26 @@ class.web.min_z = .9
 class.web.max_z = 1.01
 class.web.zap_speed = .002
 
+function class.web:pick_name()
+	local letters = 'abcdefghijklmnopqrstuvwxyz'
+	local numbers = '1234567890'
+	local prefix_length = 1 + flr(rnd(2))
+	local suffix_length = 1 + flr(rnd(2))
+	if prefix_length + suffix_length < 3 then suffix_length += 1 end
+	self.name = ''
+	for i = 1, prefix_length do
+		local chars = i == 1 and letters or letters .. numbers
+		local pos = ceil(rnd(#chars))
+		self.name = self.name .. sub(chars, pos, pos)
+	end
+	self.name = self.name .. '-'
+	for i = 1, suffix_length do
+		local chars = letters .. numbers
+		local pos = ceil(rnd(#chars))
+		self.name = self.name .. sub(chars, pos, pos)
+	end
+end
+
 function class.web:generate()
 	self.points = {}
 	local lane_size = 16
@@ -420,6 +440,7 @@ end
 
 function class.web:new()
 	self:generate()
+	self:pick_name()
 	self.zapping = false
 end
 
@@ -1120,7 +1141,7 @@ function state.gameplay:enter(web)
 	self.rolling_score = self.score
 	self.doomed = false
 	sfx(sound.intro, 2)
-	self:show_message('prepare for landing', 11)
+	self:show_message('arriving at web ' .. self.web.name, 11)
 
 	self:init_listeners()
 	self:init_menu_items()
