@@ -1497,7 +1497,7 @@ function state.game_over:update()
 end
 
 function state.game_over:draw()
-	print("we have you now...\n\nand we're never\nletting you go~!", 8, 33 + 2 * sin(uptime / 45), 2)
+	print("we have you now...\n\nand we're never\nletting you go~!", 8, 33 + 2 * sin(uptime / 45), 1)
 	print("we have you now...\n\nand we're never\nletting you go~!", 8, 32 + 2 * sin(uptime / 45), 8)
 end
 
