@@ -62,16 +62,11 @@ local function wrap(x, limit)
 	return x
 end
 
-local function to_padded_score(score)
-	if score == 0 then
-		return '0'
-	elseif score % 1 == 0 then
-		return score .. '00'
-	elseif score > 1 then
-		return flr(score) .. sub(tostr(score % 1), 3, 4)
-	else
-		return sub(tostr(score % 1), 3, 4)
-	end
+function to_padded_score(score)
+	return score == 0 and '0'
+	    or score % 1 == 0 and score .. '00'
+		or score > 1 and flr(score) .. sub(tostr(score % 1), 3, 4)
+		or sub(tostr(score % 1), 3, 4)
 end
 
 local current_state
