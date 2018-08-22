@@ -6,9 +6,9 @@ __lua__
 
 -- utilities
 
-local glyphs = "…∧░➡️⧗▤⬆️☉🅾️◆█★⬇️✽●♥웃⌂⬅️▥❎🐱ˇ▒♪😐"
+glyphs = "…∧░➡️⧗▤⬆️☉🅾️◆█★⬇️✽●♥웃⌂⬅️▥❎🐱ˇ▒♪😐"
 
-local function get_text_width(text)
+function get_text_width(text)
 	local width = 0
 	for i = 1, #text do
 		local char = sub(text, i, i)
@@ -23,7 +23,7 @@ local function get_text_width(text)
 	return width
 end
 
-local function printo(text, x, y, col, outline_col)
+function printo(text, x, y, col, outline_col)
 	outline_col = outline_col or 0
 	print(text, x - 1, y - 1, outline_col)
 	print(text, x, y - 1, outline_col)
@@ -36,27 +36,27 @@ local function printo(text, x, y, col, outline_col)
 	print(text, x, y, col)
 end
 
-local function printc(text, x, y, col)
+function printc(text, x, y, col)
 	x -= get_text_width(text) / 2
 	print(text, x, y, col)
 end
 
-local function printoc(text, x, y, col, outline_col)
+function printoc(text, x, y, col, outline_col)
 	x -= get_text_width(text) / 2
 	printo(text, x, y, col, outline_col)
 end
 
-local function printr(text, x, y, col)
+function printr(text, x, y, col)
 	x -= get_text_width(text)
 	print(text, x, y, col)
 end
 
-local function printor(text, x, y, col, outline_col)
+function printor(text, x, y, col, outline_col)
 	x -= get_text_width(text)
 	printo(text, x, y, col, outline_col)
 end
 
-local function wrap(x, limit)
+function wrap(x, limit)
 	while x <= 0 do x += limit end
 	x %= limit
 	return x
@@ -69,15 +69,13 @@ function to_padded_score(score)
 		or sub(tostr(score % 1), 3, 4)
 end
 
-local current_state
-
-local function switch_state(state, ...)
+function switch_state(state, ...)
 	if (current_state and current_state.leave) current_state:leave()
 	current_state = state
 	if (current_state.enter) current_state:enter(...)
 end
 
-local conversation = {_listeners = {}}
+conversation = {_listeners = {}}
 
 function conversation:listen(message, f)
 	local listener = {message = message, f = f}
@@ -114,7 +112,7 @@ function new_class(parent)
 	})
 end
 
-local class = {}
+class = {}
 
 -->8
 -- pseudo-3d drawing
@@ -200,9 +198,9 @@ end
 -- resources
 
 cartdata 'tesselode_web_pilot'
-local uptime = 0
-local state = {}
-local model = {
+uptime = 0
+state = {}
+model = {
 	player = class.model {
 		{-1, 0, 1/72},
 		{0, -1, 1/72},
@@ -233,7 +231,7 @@ local model = {
 		{1, 1, 0},
 	}
 }
-local sound = {
+sound = {
 	shoot = 8,
 	jump = 9,
 	hit = 10,
@@ -260,7 +258,7 @@ local sound = {
 	land = 31,
 	score_roll = 48,
 }
-local bgm = {
+bgm = {
 	title = 0,
 	game_over = 1,
 	doomed = 2,
@@ -271,12 +269,12 @@ local bgm = {
 	phantom_arrived = 11,
 	phantom_killed = 12,
 }
-local save_data_id = {
+save_data_id = {
 	high_score = 0,
 	control_direction = 32,
 }
-local freeze_frames = 0
-local screen_shake = {
+freeze_frames = 0
+screen_shake = {
 	{0, 0},
 	{-1, -1},
 	{1, 1},
@@ -287,8 +285,8 @@ local screen_shake = {
 	{-2, 2},
 	{2, -2},
 }
-local screen_shake_frame = 1
-local compliments = {
+screen_shake_frame = 1
+compliments = {
 	'cool and good!',
 	'admirable!',
 	'excellent!',
@@ -313,7 +311,7 @@ local compliments = {
 	'i believe in you!',
 	'splendid!',
 }
-local threats = {
+threats = {
 	"gotcha~.",
 	"caught you~",
 	"you're mine now~",
@@ -1074,7 +1072,6 @@ function state.gameplay:init_listeners()
 	}
 end
 
-
 function state.gameplay:init_menu_items()
 	menuitem(1, 'retry (same web)', function()
 		switch_state(state.gameplay, state.gameplay.web)
@@ -1581,7 +1578,7 @@ end
 -->8
 -- main loop
 
-local function apply_audio_effects()
+function apply_audio_effects()
 	poke(0x5f40, 0b1000) -- slowdown (channel 3)
 	poke(0x5f41, 0b1100) -- delay (channel 2, 3)
 	poke(0x5f43, 0b1000) -- distortion (channel 0)
