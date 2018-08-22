@@ -974,7 +974,8 @@ function class.star:update(speed)
 end
 
 function class.star:draw(p3d)
-	p3d:circfill(self.x, self.y, self.z, 1, 1)
+	local x, y = p3d:to2d(self.x, self.y, self.z)
+	pset(x, y, 1)
 end
 
 class.score_popup = object:extend()
@@ -1493,6 +1494,7 @@ end
 function state.title:draw()
 	for star in all(self.stars) do star:draw(self.p3d) end
 	self.web:draw(self.p3d, self.web_alpha < 1/2 and 0 or self.web_alpha < 2/3 and 1 or 3)
+
 	local x = 64 + 3.99 * sin(uptime / 480)
 	local y = 64 + self.title_oy
 	pal(7, 1)
@@ -1528,6 +1530,7 @@ function state.title:draw()
 		end
 		printoc('hi score: ' .. to_padded_score(dget(save_data_id.high_score)), 64, 2, 12, 0)
 	end
+	
 end
 
 state.game_over = {}
@@ -1627,6 +1630,7 @@ end
 function _draw()
 	cls()
 	state_manager:call 'draw'
+	printr(tostr(flr(stat(1) * 100)), 128, 0, 7)
 end
 __gfx__
 0000000000000cccccc00000000ea000000f70000000099999900000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -1865,4 +1869,3 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
-
