@@ -74,18 +74,12 @@ local function to_padded_score(score)
 	end
 end
 
-local state_manager = {}
+local current_state
 
-function state_manager:call(event, ...)
-	if self.current_state and self.current_state[event] then
-		self.current_state[event](self.current_state, ...)
-	end
-end
-
-function state_manager:switch(state, ...)
-	self:call 'leave'
-	self.current_state = state
-	self:call('enter', ...)
+local function switch_state(state, ...)
+	if (current_state and current_state.leave) current_state:leave()
+	current_state = state
+	if (current_state.enter) current_state:enter(...)
 end
 
 local conversation = {_listeners = {}}
@@ -1088,10 +1082,10 @@ end
 
 function state.gameplay:init_menu_items()
 	menuitem(1, 'retry (same web)', function()
-		state_manager:switch(state.gameplay, state.gameplay.web)
+		switch_state(state.gameplay, state.gameplay.web)
 	end)
 	menuitem(2, 'back to menu', function()
-		state_manager:switch(state.title, true)
+		switch_state(state.title, true)
 	end)
 	menuitem(3, 'invert controls', function()
 		dset(save_data_id.control_direction, dget(save_data_id.control_direction) == 0 and 1 or 0)
@@ -1295,7 +1289,7 @@ function state.gameplay:update()
 		end
 		self.game_over_timer += 1
 		if self.game_over_timer >= self.game_over_time then
-			state_manager:switch(state.game_over)
+			switch_state(state.game_over)
 		end
 	end
 
@@ -1433,7 +1427,7 @@ function state.title:update()
 	elseif self.state == 2 then
 		self.p3d.oz -= 1/60
 		if self.p3d.oz < -1 then
-			state_manager:switch(state.gameplay, self.web)
+			switch_state(state.gameplay, self.web)
 		end
 	end
 
@@ -1528,7 +1522,7 @@ end
 function state.game_over:update()
 	self.timer -= 1
 	if self.timer == 0 then
-		state_manager:switch(state.results)
+		switch_state(state.results)
 	end
 end
 
@@ -1566,8 +1560,8 @@ function state.results:update()
 		end
 	end
 	if self.menu_timer == 0 then
-		if btnp(4) then state_manager:switch(state.gameplay, state.gameplay.web) end
-		if btnp(5) then state_manager:switch(state.title, true) end
+		if btnp(4) then switch_state(state.gameplay, state.gameplay.web) end
+		if btnp(5) then switch_state(state.title, true) end
 	end
 end
 
@@ -1600,17 +1594,17 @@ end
 
 function _init()
 	apply_audio_effects()
-	state_manager:switch(state.title)
+	switch_state(state.title)
 end
 
 function _update60()
 	uptime += 1
-	state_manager:call 'update'
+	current_state:update()
 end
 
 function _draw()
 	cls()
-	state_manager:call 'draw'
+	current_state:draw()
 	printr(tostr(flr(stat(1) * 100)), 128, 0, 7)
 end
 __gfx__
