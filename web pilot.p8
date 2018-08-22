@@ -1026,13 +1026,13 @@ function state.gameplay:init_timers()
 end
 
 function state.gameplay:on_player_shot(position, z)
-	add(self.entities, class.player_bullet(self.web, position, z))
+	self:queue_entity(class.player_bullet(self.web, position, z))
 	sfx(sound.shoot, 0)
 end
 
 function state.gameplay:on_powerup_collected(x, y, z)
 	for i = 1, 10 do
-		add(self.entities, class.particle(x, y, z, 12))
+		self:queue_entity(class.particle(x, y, z, 12))
 	end
 	if not self.zapper_online then
 		self.zapper_online = true
@@ -1041,7 +1041,7 @@ function state.gameplay:on_powerup_collected(x, y, z)
 	else
 		self.powerup_streak += 1
 		self.score += self.powerup_streak * 10
-		add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
+		self:queue_entity(class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
 		local message = compliments[ceil(rnd(#compliments))]
 		message = message .. ' +' .. self.powerup_streak .. '000'
 		self:show_message(message)
@@ -1054,7 +1054,7 @@ function state.gameplay:on_enemy_killed(enemy)
 		self.to_next_powerup -= 1
 		if self.to_next_powerup == 0 then
 			self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty) * flr(self.difficulty)
-			add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
+			self:queue_entity(class.powerup(enemy.x, enemy.y, enemy.z))
 		end
 	end
 	if not self.player.jumping and not self.web.zapping then
@@ -1072,12 +1072,12 @@ function state.gameplay:on_enemy_killed(enemy)
 		end
 		self.score += point_value
 		local x, y = self.p3d:to2d(enemy.x, enemy.y, enemy.z)
-		add(self.entities, class.score_popup(point_value .. '00', x, y, color))
+		self:queue_entity(class.score_popup(point_value .. '00', x, y, color))
 	end
 	if enemy:is(class.thwomp) then self.difficulty += .1 end
 	if enemy:is(class.phantom) then self.difficulty += 1/3 end
 	for i = 1, 5 do
-		add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
+		self:queue_entity(class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
 	end
 	freeze_frames += 4
 	screen_shake_frame += 3
@@ -1096,7 +1096,7 @@ end
 
 function state.gameplay:on_phantom_spawned_enemy(position, z)
 	if #self.entities < self.entity_limit then
-		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
+		self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
 		sfx(sound.phantom_spit, 2)
 	end
 end
@@ -1129,6 +1129,7 @@ function state.gameplay:enter(web)
 	self.p3d = class.p3d()
 	self.p3d.oz = -2/3
 	self.web = web
+	self.queue = {}
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
 	self:init_stars()
@@ -1156,6 +1157,10 @@ function state.gameplay:enter(web)
 
 	self:init_listeners()
 	self:init_menu_items()
+end
+
+function state.gameplay:queue_entity(entity)
+	add(self.queue, entity)
 end
 
 function state.gameplay:is_colliding(a, b)
@@ -1223,10 +1228,10 @@ function state.gameplay:update()
 			self.timer.flipper -= self.difficulty
 			while self.timer.flipper <= 0 do
 				self.timer.flipper += 90 + rnd(60)
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+				self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty))
 				if self.difficulty > 1.5 and rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+						self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty))
 					end
 					self.difficulty -= .05
 				end
@@ -1235,10 +1240,10 @@ function state.gameplay:update()
 			self.timer.small_flipper -= self.difficulty
 			while self.timer.small_flipper <= 0 do
 				self.timer.small_flipper += 400 + rnd(400)
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+				self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
 				if rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+						self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
 					end
 					self.difficulty -= .05
 				end
@@ -1247,11 +1252,11 @@ function state.gameplay:update()
 			self.timer.thwomp -= self.difficulty
 			while self.timer.thwomp <= 0 do
 				self.timer.thwomp += 1600 + rnd(700)
-				add(self.entities, class.thwomp(self.web, self.difficulty))
+				self:queue_entity(class.thwomp(self.web, self.difficulty))
 				self.difficulty -= .1
 				if rnd(1) > .9 then
 					for i = 1, flr(self.difficulty) do
-						add(self.entities, class.thwomp(self.web, self.difficulty))
+						self:queue_entity(class.thwomp(self.web, self.difficulty))
 					end
 				end
 				sfx(sound.spawn, 3)
@@ -1259,7 +1264,7 @@ function state.gameplay:update()
 			self.timer.phantom -= self.difficulty
 			while self.timer.phantom <= 0 do
 				self.timer.phantom += 2000 + rnd(1000)
-				add(self.entities, class.phantom(self.web, self.difficulty))
+				self:queue_entity(class.phantom(self.web, self.difficulty))
 				self.difficulty -= 1/3
 				sfx(sound.spawn, 3)
 			end
@@ -1268,7 +1273,16 @@ function state.gameplay:update()
 
 	-- update web and entities
 	self.web:update()
-	for entity in all(self.entities) do
+	for i = #self.entities, 1, -1 do
+		local entity = self.entities[i]
+		if entity.dead then del(self.entities, entity) end
+	end
+	for entity in all(self.queue) do
+		add(self.entities, entity)
+		del(self.queue, entity)
+	end
+	for i = 1, #self.entities do
+		local entity = self.entities[i]
 		entity:update()
 		if entity:is(class.physical) and entity.position then
 			entity.x, entity.y = self.web:get_position(entity.position, entity.h)
@@ -1277,7 +1291,8 @@ function state.gameplay:update()
 
 	-- zapper
 	if self.web.zapping then
-		for entity in all(self.entities) do
+		for i = 1, #self.entities do
+			local entity = self.entities[i]
 			if entity:is(class.enemy) and not entity:is(class.phantom) and abs(entity.z - self.web.zapping) < .01 and not entity.jumping then
 				entity:die()
 			end
@@ -1299,11 +1314,6 @@ function state.gameplay:update()
 		end
 	end
 
-	-- remove entities
-	for entity in all(self.entities) do
-		if entity.dead then del(self.entities, entity) end
-	end
-
 	-- game over
 	if self.player.z < self.web.min_z then
 		if not self.doomed then
@@ -1317,7 +1327,7 @@ function state.gameplay:update()
 	end
 
 	-- cosmetic
-	for star in all(self.stars) do star:update(1) end
+	for i = 1, #self.stars do self.stars[i]:update(1) end
 	local target_hx = 64 + (self.player.x - 64) * 1/6
 	local target_hy = 64 + (self.player.y - 64) * 1/6
 	if not self.intro then
@@ -1361,11 +1371,9 @@ function state.gameplay:draw()
 	--draw world
 	local shake = screen_shake[min(screen_shake_frame, #screen_shake)]
 	camera(shake[1], shake[2])
-	for star in all(self.stars) do star:draw(self.p3d) end
+	for i = 1, #self.stars do self.stars[i]:draw(self.p3d) end
 	self.web:draw(self.p3d, self.player.caught and 8 or 3)
-	for entity in all(self.entities) do
-		entity:draw(self.p3d)
-	end
+	for i = 1, #self.entities do self.entities[i]:draw(self.p3d) end
 	camera()
 
 	-- draw hud
@@ -1459,7 +1467,7 @@ function state.title:update()
 	-- cosmetic
 	local target_title_oy = self.state == 1 and -40 or 0
 	self.title_oy += (target_title_oy - self.title_oy) * .1
-	for star in all(self.stars) do star:update(1) end
+	for i = 1, #self.stars do self.stars[i]:update(1) end
 	if self.state == 0 and self.title_z == 1 then
 		self.title_uptime += 1
 	end
@@ -1492,7 +1500,7 @@ function state.title:update()
 end
 
 function state.title:draw()
-	for star in all(self.stars) do star:draw(self.p3d) end
+	for i = 1, #self.stars do self.stars[i]:draw(self.p3d) end
 	self.web:draw(self.p3d, self.web_alpha < 1/2 and 0 or self.web_alpha < 2/3 and 1 or 3)
 
 	local x = 64 + 3.99 * sin(uptime / 480)
