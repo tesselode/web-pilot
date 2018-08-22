@@ -58,8 +58,7 @@ end
 
 function wrap(x, limit)
 	while x <= 0 do x += limit end
-	x %= limit
-	return x
+	return x % limit
 end
 
 function to_padded_score(score)
@@ -129,7 +128,7 @@ function class.p3d:to2d(x, y, z)
 	x -= (self.hx - 64) / 3
 	y -= (self.hy - 64) / 3
 	z += self.oz
-	if z < 0 then z = 0 end
+	z = max(0, z)
 	for i = 1, 4 do z *= z end
 	return self.hx + (x - self.hx) * z,
 	       self.hy + (y - self.hy) * z
@@ -144,7 +143,7 @@ end
 function class.p3d:circfill(x, y, z, r, col)
 	local x, y = self:to2d(x, y, z)
 	z += self.oz
-	if z < 0 then z = 0 end
+	z = max(0, z)
 	for i = 1, 4 do z *= z end
 	circfill(x, y, r * z * z, col)
 end
@@ -153,7 +152,7 @@ function class.p3d:sspr(sx, sy, sw, sh, x, y, z, scale)
 	scale = scale or 1
 	x, y = self:to2d(x, y, z)
 	z += self.oz
-	if z < 0 then z = 0 end
+	z = max(0, z)
 	for i = 1, 4 do z *= z end
 	local w, h = sw * z * scale, sh * z * scale
 	x -= w/2
@@ -335,11 +334,11 @@ threats = {
 -->8
 -- gameplay classes
 
-class.web = new_class()
-
-class.web.min_z = .9
-class.web.max_z = 1.01
-class.web.zap_speed = .002
+class.web = new_class({
+	min_z = .9,
+	max_z = 1.01,
+	zap_speed = .002,
+})
 
 function class.web:pick_name()
 	local letters = 'abcdefghijklmnopqrstuvwxyz'
@@ -660,7 +659,7 @@ function class.flipper:update()
 	end
 	if self.z < 1 then
 		self.z += (self.z < self.web.min_z and self.base_speed * 3 or self.speed)
-		if self.z > 1 then self.z = 1 end
+		self.z = min(self.z, 1)
 	end
 	if self.flip_direction == 0 and self.z > self.web.min_z then
 		local timer_speed = 1
@@ -1140,7 +1139,7 @@ function state.gameplay:zap()
 	self.web:zap()
 	self.zapper_online = false
 	self.difficulty -= .1
-	if self.difficulty < 1 then self.difficulty = 1 end
+	self.difficulty = max(self.difficulty, 1)
 	self.powerup_streak = 0
 	self:show_message 'eat electric death!'
 	music(bgm.zapper)
