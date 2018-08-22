@@ -108,48 +108,21 @@ function conversation:deafen(listener)
 	self._listeners[listener] = nil
 end
 
---
--- classic
---
--- copyright (c) 2014, rxi
---
--- this module is free software; you can redistribute it and/or modify it under
--- the terms of the mit license. see license for details.
---
-
-local object = {}
-object.__index = object
-
-function object:new() end
-
-function object:extend()
-	local cls = {}
-	for k, v in pairs(self) do
-		if sub(k, 1, 2) == '__' then
-			cls[k] = v
-		end
-	end
-	cls.__index = cls
-	cls.super = self
-	setmetatable(cls, self)
-	return cls
-end
-
-function object:is(t)
-	local mt = getmetatable(self)
-	while mt do
-		if mt == t then
-			return true
-		end
-		mt = getmetatable(mt)
-	end
-	return false
-end
-
-function object:__call(...)
-	local obj = setmetatable({}, self)
-	obj:new(...)
-	return obj
+function new_class(parent)
+	return setmetatable({
+		is = function(self, c)
+			local parent = getmetatable(self).__index
+			if (not parent) return false
+			return parent == c or parent:is(c)
+		end,
+	}, {
+		__index = parent,
+		__call = function(self, ...)
+			local instance = setmetatable({}, {__index = self})
+			if instance.new then instance:new(...) end
+			return instance
+		end,
+	})
 end
 
 local class = {}
@@ -157,7 +130,7 @@ local class = {}
 -->8
 -- pseudo-3d drawing
 
-class.p3d = object:extend()
+class.p3d = new_class()
 
 function class.p3d:new()
 	self.hx = 64
@@ -201,7 +174,7 @@ function class.p3d:sspr(sx, sy, sw, sh, x, y, z, scale)
 	sspr(sx, sy, sw, sh, x, y, w, h)
 end
 
-class.model = object:extend()
+class.model = new_class()
 
 function class.model:new(points)
 	self.points = points
@@ -375,7 +348,7 @@ local threats = {
 -->8
 -- gameplay classes
 
-class.web = object:extend()
+class.web = new_class()
 
 class.web.min_z = .9
 class.web.max_z = 1.01
@@ -487,9 +460,9 @@ function class.web:draw(p3d, color)
 	end
 end
 
-class.physical = object:extend()
+class.physical = new_class()
 
-class.player = class.physical:extend()
+class.player = new_class(class.physical)
 
 class.player.radius = 8
 class.player.acceleration = .01
@@ -606,7 +579,7 @@ function class.player:draw(p3d)
 	model.player:draw(p3d, self.x, self.y, z, r, 8, 8, 1, color)
 end
 
-class.player_bullet = class.physical:extend()
+class.player_bullet = new_class(class.physical)
 
 class.player_bullet.radius = 1
 class.player_bullet.speed = .0067
@@ -639,9 +612,9 @@ function class.player_bullet:draw(p3d)
 	p3d:line(self.x + 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
 end
 
-class.enemy = class.physical:extend()
+class.enemy = new_class(class.physical)
 
-class.flipper = class.enemy:extend()
+class.flipper = new_class(class.enemy)
 
 class.flipper.base_speed = .0005
 class.flipper.flip_interval = 45
@@ -742,7 +715,7 @@ function class.flipper:draw(p3d)
 	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, self.color)
 end
 
-class.thwomp = class.enemy:extend()
+class.thwomp = new_class(class.enemy)
 
 class.thwomp.radius = 16
 class.thwomp.min_jump_interval = 150
@@ -833,7 +806,7 @@ function class.thwomp:draw(p3d)
 	model.thwomp:draw(p3d, self.x, self.y, self.z, r + .25, self.radius, self.radius, 1, color)
 end
 
-class.phantom = class.enemy:extend()
+class.phantom = new_class(class.enemy)
 
 class.phantom.radius = 24
 class.phantom.color = 7
@@ -908,7 +881,7 @@ function class.phantom:draw(p3d)
 	pal()
 end
 
-class.powerup = class.physical:extend()
+class.powerup = new_class(class.physical)
 
 class.powerup.speed = .0005
 class.powerup.radius = 8
@@ -928,7 +901,7 @@ function class.powerup:draw(p3d)
 	p3d:sspr(8, 0, 16, 16, self.x, self.y, self.z)
 end
 
-class.particle = object:extend()
+class.particle = new_class()
 
 function class.particle:new(x, y, z, color)
 	self.x = x
@@ -954,7 +927,7 @@ function class.particle:draw(p3d)
 	p3d:circfill(self.x, self.y, self.z, self.r, self.color)
 end
 
-class.star = object:extend()
+class.star = new_class()
 
 function class.star:new()
 	local angle = rnd(1)
@@ -978,7 +951,7 @@ function class.star:draw(p3d)
 	pset(x, y, 1)
 end
 
-class.score_popup = object:extend()
+class.score_popup = new_class()
 
 function class.score_popup:new(text, x, y, color)
 	self.text = text
