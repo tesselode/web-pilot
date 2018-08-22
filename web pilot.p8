@@ -95,14 +95,14 @@ function conversation:deafen(listener)
 	self._listeners[listener] = nil
 end
 
-function new_class(parent)
-	return setmetatable({
-		is = function(self, c)
-			local parent = getmetatable(self).__index
-			if (not parent) return false
-			return parent == c or parent:is(c)
-		end,
-	}, {
+function new_class(t, parent)
+	t = t or {}
+	function t:is(c)
+		local parent = getmetatable(self).__index
+		if (not parent) return false
+		return parent == c or parent:is(c)
+	end
+	return setmetatable(t, {
 		__index = parent,
 		__call = function(self, ...)
 			local instance = setmetatable({}, {__index = self})
@@ -449,17 +449,17 @@ end
 
 class.physical = new_class()
 
-class.player = new_class(class.physical)
-
-class.player.radius = 8
-class.player.acceleration = .01
-class.player.friction = .05
-class.player.reload_time = 5
-class.player.shot_heat = 1/5
-class.player.shot_cooldown_speed = 1/20
-class.player.jump_power = .003
-class.player.gravity = .0001
-class.player.stun_time = 90
+class.player = new_class({
+	radius = 8,
+	acceleration = .01,
+	friction = .05,
+	reload_time = 5,
+	shot_heat = 1/5,
+	shot_cooldown_speed = 1/20,
+	jump_power = .003,
+	gravity = .0001,
+	stun_time = 90,
+}, class.physical)
 
 function class.player:new(web, position)
 	self.web = web
@@ -566,10 +566,10 @@ function class.player:draw(p3d)
 	model.player:draw(p3d, self.x, self.y, z, r, 8, 8, 1, color)
 end
 
-class.player_bullet = new_class(class.physical)
-
-class.player_bullet.radius = 1
-class.player_bullet.speed = .0067
+class.player_bullet = new_class({
+	radius = 1,
+	speed = .0067,
+}, class.physical)
 
 function class.player_bullet:new(web, position, z)
 	self.web = web
@@ -599,14 +599,14 @@ function class.player_bullet:draw(p3d)
 	p3d:line(self.x + 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
 end
 
-class.enemy = new_class(class.physical)
+class.enemy = new_class({}, class.physical)
 
-class.flipper = new_class(class.enemy)
-
-class.flipper.base_speed = .0005
-class.flipper.flip_interval = 45
-class.flipper.flip_speed = 1/20
-class.flipper.drag_speed = .00025
+class.flipper = new_class({
+	base_speed = .0005,
+	flip_interval = 45,
+	flip_speed = 1/20,
+	drag_speed = .00025,
+}, class.enemy)
 
 function class.flipper:new(p3d, web, player, difficulty, small, position, z)
 	self.p3d = p3d
@@ -702,16 +702,16 @@ function class.flipper:draw(p3d)
 	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, self.color)
 end
 
-class.thwomp = new_class(class.enemy)
-
-class.thwomp.radius = 16
-class.thwomp.min_jump_interval = 150
-class.thwomp.max_jump_interval = 300
-class.thwomp.jump_power = .1
-class.thwomp.gravity = .005
-class.thwomp.starting_health = 12
-class.thwomp.point_value = 10
-class.thwomp.color = 8
+class.thwomp = new_class({
+	radius = 16,
+	min_jump_interval = 150,
+	max_jump_interval = 300,
+	jump_power = .1,
+	gravity = .005,
+	starting_health = 12,
+	point_value = 10,
+	color = 8,
+}, class.enemy)
 
 function class.thwomp:new(web, difficulty)
 	self.web = web
@@ -793,12 +793,12 @@ function class.thwomp:draw(p3d)
 	model.thwomp:draw(p3d, self.x, self.y, self.z, r + .25, self.radius, self.radius, 1, color)
 end
 
-class.phantom = new_class(class.enemy)
-
-class.phantom.radius = 24
-class.phantom.color = 7
-class.phantom.point_value = 50
-class.phantom.push_back = .025
+class.phantom = new_class({
+	radius = 24,
+	color = 7,
+	point_value = 50,
+	push_back = .025,
+}, class.enemy)
 
 function class.phantom:new(web, difficulty)
 	self.web = web
@@ -868,10 +868,10 @@ function class.phantom:draw(p3d)
 	pal()
 end
 
-class.powerup = new_class(class.physical)
-
-class.powerup.speed = .0005
-class.powerup.radius = 8
+class.powerup = new_class({
+	speed = .0005,
+	radius = 8,
+}, class.physical)
 
 function class.powerup:new(x, y, z)
 	self.x = x
@@ -964,10 +964,10 @@ end
 -->8
 -- gameplay state
 
-state.gameplay = {}
-
-state.gameplay.entity_limit = 30
-state.gameplay.game_over_time = 240
+state.gameplay = {
+	entity_limit = 30,
+	game_over_time = 240,
+}
 
 function state.gameplay:init_stars()
 	self.stars = {}
