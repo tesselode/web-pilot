@@ -1038,7 +1038,9 @@ function state.gameplay:on_powerup_collected(x, y, z)
 		self:show_message 'superzapper recharge'
 		sfx(sound.recharge, 1)
 	else
-		self.powerup_streak += 1
+	 if (not self.player.jumping) or self.powerup_streak == 0 then
+			self.powerup_streak += 1
+		end
 		self.score += self.powerup_streak * 10
 		add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
 		local message = compliments[ceil(rnd(#compliments))]
