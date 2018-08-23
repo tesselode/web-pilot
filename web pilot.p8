@@ -1557,6 +1557,7 @@ state.results = {}
 
 function state.results:enter()
 	self.score = state.gameplay.score
+	self.high_score = false
 	if self.score > dget(save_data_id.high_score) then
 		self.high_score = true
 		dset(save_data_id.high_score, self.score)
@@ -1865,4 +1866,3 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
-
