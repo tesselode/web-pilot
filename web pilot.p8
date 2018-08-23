@@ -352,7 +352,7 @@ local compliments = {
 	'splendid!',
 }
 local threats = {
-	"gotcha~.",
+	"gotcha~",
 	"caught you~",
 	"you're mine now~",
 	"i've got you now~",
