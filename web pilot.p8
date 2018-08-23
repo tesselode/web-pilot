@@ -6,9 +6,9 @@ __lua__
 
 -- utilities
 
-local glyphs = "…∧░➡️⧗▤⬆️☉🅾️◆█★⬇️✽●♥웃⌂⬅️▥❎🐱ˇ▒♪😐"
+glyphs = "…∧░➡️⧗▤⬆️☉🅾️◆█★⬇️✽●♥웃⌂⬅️▥❎🐱ˇ▒♪😐"
 
-local function get_text_width(text)
+function get_text_width(text)
 	local width = 0
 	for i = 1, #text do
 		local char = sub(text, i, i)
@@ -23,7 +23,7 @@ local function get_text_width(text)
 	return width
 end
 
-local function printo(text, x, y, col, outline_col)
+function printo(text, x, y, col, outline_col)
 	outline_col = outline_col or 0
 	print(text, x - 1, y - 1, outline_col)
 	print(text, x, y - 1, outline_col)
@@ -36,59 +36,45 @@ local function printo(text, x, y, col, outline_col)
 	print(text, x, y, col)
 end
 
-local function printc(text, x, y, col)
+function printc(text, x, y, col)
 	x -= get_text_width(text) / 2
 	print(text, x, y, col)
 end
 
-local function printoc(text, x, y, col, outline_col)
+function printoc(text, x, y, col, outline_col)
 	x -= get_text_width(text) / 2
 	printo(text, x, y, col, outline_col)
 end
 
-local function printr(text, x, y, col)
+function printr(text, x, y, col)
 	x -= get_text_width(text)
 	print(text, x, y, col)
 end
 
-local function printor(text, x, y, col, outline_col)
+function printor(text, x, y, col, outline_col)
 	x -= get_text_width(text)
 	printo(text, x, y, col, outline_col)
 end
 
-local function wrap(x, limit)
+function wrap(x, limit)
 	while x <= 0 do x += limit end
-	x %= limit
-	return x
+	return x % limit
 end
 
-local function to_padded_score(score)
-	if score == 0 then
-		return '0'
-	elseif score % 1 == 0 then
-		return score .. '00'
-	elseif score > 1 then
-		return flr(score) .. sub(tostr(score % 1), 3, 4)
-	else
-		return sub(tostr(score % 1), 3, 4)
-	end
+function to_padded_score(score)
+	return score == 0 and '0'
+	    or score % 1 == 0 and score .. '00'
+		or score > 1 and flr(score) .. sub(tostr(score % 1), 3, 4)
+		or sub(tostr(score % 1), 3, 4)
 end
 
-local state_manager = {}
-
-function state_manager:call(event, ...)
-	if self.current_state and self.current_state[event] then
-		self.current_state[event](self.current_state, ...)
-	end
+function switch_state(state, ...)
+	if (current_state and current_state.leave) current_state:leave()
+	current_state = state
+	if (current_state.enter) current_state:enter(...)
 end
 
-function state_manager:switch(state, ...)
-	self:call 'leave'
-	self.current_state = state
-	self:call('enter', ...)
-end
-
-local conversation = {_listeners = {}}
+conversation = {_listeners = {}}
 
 function conversation:listen(message, f)
 	local listener = {message = message, f = f}
@@ -108,56 +94,29 @@ function conversation:deafen(listener)
 	self._listeners[listener] = nil
 end
 
---
--- classic
---
--- copyright (c) 2014, rxi
---
--- this module is free software; you can redistribute it and/or modify it under
--- the terms of the mit license. see license for details.
---
-
-local object = {}
-object.__index = object
-
-function object:new() end
-
-function object:extend()
-	local cls = {}
-	for k, v in pairs(self) do
-		if sub(k, 1, 2) == '__' then
-			cls[k] = v
-		end
+function new_class(t, parent)
+	t = t or {}
+	function t:is(c)
+		local parent = getmetatable(self).__index
+		if (not parent) return false
+		return parent == c or parent:is(c)
 	end
-	cls.__index = cls
-	cls.super = self
-	setmetatable(cls, self)
-	return cls
+	return setmetatable(t, {
+		__index = parent,
+		__call = function(self, ...)
+			local instance = setmetatable({}, {__index = self})
+			if instance.new then instance:new(...) end
+			return instance
+		end,
+	})
 end
 
-function object:is(t)
-	local mt = getmetatable(self)
-	while mt do
-		if mt == t then
-			return true
-		end
-		mt = getmetatable(mt)
-	end
-	return false
-end
-
-function object:__call(...)
-	local obj = setmetatable({}, self)
-	obj:new(...)
-	return obj
-end
-
-local class = {}
+class = {}
 
 -->8
 -- pseudo-3d drawing
 
-class.p3d = object:extend()
+class.p3d = new_class()
 
 function class.p3d:new()
 	self.hx = 64
@@ -169,7 +128,7 @@ function class.p3d:to2d(x, y, z)
 	x -= (self.hx - 64) / 3
 	y -= (self.hy - 64) / 3
 	z += self.oz
-	if z < 0 then z = 0 end
+	z = max(0, z)
 	for i = 1, 4 do z *= z end
 	return self.hx + (x - self.hx) * z,
 	       self.hy + (y - self.hy) * z
@@ -184,7 +143,7 @@ end
 function class.p3d:circfill(x, y, z, r, col)
 	local x, y = self:to2d(x, y, z)
 	z += self.oz
-	if z < 0 then z = 0 end
+	z = max(0, z)
 	for i = 1, 4 do z *= z end
 	circfill(x, y, r * z * z, col)
 end
@@ -193,7 +152,7 @@ function class.p3d:sspr(sx, sy, sw, sh, x, y, z, scale)
 	scale = scale or 1
 	x, y = self:to2d(x, y, z)
 	z += self.oz
-	if z < 0 then z = 0 end
+	z = max(0, z)
 	for i = 1, 4 do z *= z end
 	local w, h = sw * z * scale, sh * z * scale
 	x -= w/2
@@ -201,7 +160,7 @@ function class.p3d:sspr(sx, sy, sw, sh, x, y, z, scale)
 	sspr(sx, sy, sw, sh, x, y, w, h)
 end
 
-class.model = object:extend()
+class.model = new_class()
 
 function class.model:new(points)
 	self.points = points
@@ -238,9 +197,9 @@ end
 -- resources
 
 cartdata 'tesselode_web_pilot'
-local uptime = 0
-local state = {}
-local model = {
+uptime = 0
+state = {}
+model = {
 	player = class.model {
 		{-1, 0, 1/72},
 		{0, -1, 1/72},
@@ -271,7 +230,7 @@ local model = {
 		{1, 1, 0},
 	}
 }
-local sound = {
+sound = {
 	shoot = 8,
 	jump = 9,
 	hit = 10,
@@ -298,7 +257,7 @@ local sound = {
 	land = 31,
 	score_roll = 48,
 }
-local bgm = {
+bgm = {
 	title = 0,
 	game_over = 1,
 	doomed = 2,
@@ -309,12 +268,12 @@ local bgm = {
 	phantom_arrived = 11,
 	phantom_killed = 12,
 }
-local save_data_id = {
+save_data_id = {
 	high_score = 0,
 	control_direction = 32,
 }
-local freeze_frames = 0
-local screen_shake = {
+freeze_frames = 0
+screen_shake = {
 	{0, 0},
 	{-1, -1},
 	{1, 1},
@@ -325,8 +284,8 @@ local screen_shake = {
 	{-2, 2},
 	{2, -2},
 }
-local screen_shake_frame = 1
-local compliments = {
+screen_shake_frame = 1
+compliments = {
 	'cool and good!',
 	'admirable!',
 	'excellent!',
@@ -351,7 +310,7 @@ local compliments = {
 	'i believe in you!',
 	'splendid!',
 }
-local threats = {
+threats = {
 	"gotcha~",
 	"caught you~",
 	"you're mine now~",
@@ -375,11 +334,11 @@ local threats = {
 -->8
 -- gameplay classes
 
-class.web = object:extend()
-
-class.web.min_z = .9
-class.web.max_z = 1.01
-class.web.zap_speed = .002
+class.web = new_class({
+	min_z = .9,
+	max_z = 1.01,
+	zap_speed = .002,
+})
 
 function class.web:pick_name()
 	local letters = 'abcdefghijklmnopqrstuvwxyz'
@@ -487,19 +446,19 @@ function class.web:draw(p3d, color)
 	end
 end
 
-class.physical = object:extend()
+class.physical = new_class()
 
-class.player = class.physical:extend()
-
-class.player.radius = 8
-class.player.acceleration = .01
-class.player.friction = .05
-class.player.reload_time = 5
-class.player.shot_heat = 1/5
-class.player.shot_cooldown_speed = 1/20
-class.player.jump_power = .003
-class.player.gravity = .0001
-class.player.stun_time = 90
+class.player = new_class({
+	radius = 8,
+	acceleration = .01,
+	friction = .05,
+	reload_time = 5,
+	shot_heat = 1/5,
+	shot_cooldown_speed = 1/20,
+	jump_power = .003,
+	gravity = .0001,
+	stun_time = 90,
+}, class.physical)
 
 function class.player:new(web, position)
 	self.web = web
@@ -606,10 +565,10 @@ function class.player:draw(p3d)
 	model.player:draw(p3d, self.x, self.y, z, r, 8, 8, 1, color)
 end
 
-class.player_bullet = class.physical:extend()
-
-class.player_bullet.radius = 1
-class.player_bullet.speed = .0067
+class.player_bullet = new_class({
+	radius = 1,
+	speed = .0067,
+}, class.physical)
 
 function class.player_bullet:new(web, position, z)
 	self.web = web
@@ -639,14 +598,14 @@ function class.player_bullet:draw(p3d)
 	p3d:line(self.x + 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
 end
 
-class.enemy = class.physical:extend()
+class.enemy = new_class({}, class.physical)
 
-class.flipper = class.enemy:extend()
-
-class.flipper.base_speed = .0005
-class.flipper.flip_interval = 45
-class.flipper.flip_speed = 1/20
-class.flipper.drag_speed = .00025
+class.flipper = new_class({
+	base_speed = .0005,
+	flip_interval = 45,
+	flip_speed = 1/20,
+	drag_speed = .00025,
+}, class.enemy)
 
 function class.flipper:new(p3d, web, player, difficulty, small, position, z)
 	self.p3d = p3d
@@ -700,7 +659,7 @@ function class.flipper:update()
 	end
 	if self.z < 1 then
 		self.z += (self.z < self.web.min_z and self.base_speed * 3 or self.speed)
-		if self.z > 1 then self.z = 1 end
+		self.z = min(self.z, 1)
 	end
 	if self.flip_direction == 0 and self.z > self.web.min_z then
 		local timer_speed = 1
@@ -742,16 +701,16 @@ function class.flipper:draw(p3d)
 	model.flipper:draw(p3d, self.x, self.y, self.z, self.r, scale, scale, 1, self.color)
 end
 
-class.thwomp = class.enemy:extend()
-
-class.thwomp.radius = 16
-class.thwomp.min_jump_interval = 150
-class.thwomp.max_jump_interval = 300
-class.thwomp.jump_power = .1
-class.thwomp.gravity = .005
-class.thwomp.starting_health = 12
-class.thwomp.point_value = 10
-class.thwomp.color = 8
+class.thwomp = new_class({
+	radius = 16,
+	min_jump_interval = 150,
+	max_jump_interval = 300,
+	jump_power = .1,
+	gravity = .005,
+	starting_health = 12,
+	point_value = 10,
+	color = 8,
+}, class.enemy)
 
 function class.thwomp:new(web, difficulty)
 	self.web = web
@@ -833,12 +792,12 @@ function class.thwomp:draw(p3d)
 	model.thwomp:draw(p3d, self.x, self.y, self.z, r + .25, self.radius, self.radius, 1, color)
 end
 
-class.phantom = class.enemy:extend()
-
-class.phantom.radius = 24
-class.phantom.color = 7
-class.phantom.point_value = 50
-class.phantom.push_back = .025
+class.phantom = new_class({
+	radius = 24,
+	color = 7,
+	point_value = 50,
+	push_back = .025,
+}, class.enemy)
 
 function class.phantom:new(web, difficulty)
 	self.web = web
@@ -908,10 +867,10 @@ function class.phantom:draw(p3d)
 	pal()
 end
 
-class.powerup = class.physical:extend()
-
-class.powerup.speed = .0005
-class.powerup.radius = 8
+class.powerup = new_class({
+	speed = .0005,
+	radius = 8,
+}, class.physical)
 
 function class.powerup:new(x, y, z)
 	self.x = x
@@ -928,7 +887,7 @@ function class.powerup:draw(p3d)
 	p3d:sspr(8, 0, 16, 16, self.x, self.y, self.z)
 end
 
-class.particle = object:extend()
+class.particle = new_class()
 
 function class.particle:new(x, y, z, color)
 	self.x = x
@@ -954,7 +913,7 @@ function class.particle:draw(p3d)
 	p3d:circfill(self.x, self.y, self.z, self.r, self.color)
 end
 
-class.star = object:extend()
+class.star = new_class()
 
 function class.star:new()
 	local angle = rnd(1)
@@ -974,10 +933,11 @@ function class.star:update(speed)
 end
 
 function class.star:draw(p3d)
-	p3d:circfill(self.x, self.y, self.z, 1, 1)
+	local x, y = p3d:to2d(self.x, self.y, self.z)
+	pset(x, y, 1)
 end
 
-class.score_popup = object:extend()
+class.score_popup = new_class()
 
 function class.score_popup:new(text, x, y, color)
 	self.text = text
@@ -1003,10 +963,10 @@ end
 -->8
 -- gameplay state
 
-state.gameplay = {}
-
-state.gameplay.entity_limit = 30
-state.gameplay.game_over_time = 240
+state.gameplay = {
+	entity_limit = 30,
+	game_over_time = 240,
+}
 
 function state.gameplay:init_stars()
 	self.stars = {}
@@ -1025,13 +985,13 @@ function state.gameplay:init_timers()
 end
 
 function state.gameplay:on_player_shot(position, z)
-	add(self.entities, class.player_bullet(self.web, position, z))
+	self:queue_entity(class.player_bullet(self.web, position, z))
 	sfx(sound.shoot, 0)
 end
 
 function state.gameplay:on_powerup_collected(x, y, z)
 	for i = 1, 10 do
-		add(self.entities, class.particle(x, y, z, 12))
+		self:queue_entity(class.particle(x, y, z, 12))
 	end
 	if not self.zapper_online then
 		self.zapper_online = true
@@ -1042,7 +1002,7 @@ function state.gameplay:on_powerup_collected(x, y, z)
 			self.powerup_streak += 1
 		end
 		self.score += self.powerup_streak * 10
-		add(self.entities, class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
+		self:queue_entity(class.score_popup(self.powerup_streak .. '000', self.p3d:to2d(x, y, z)))
 		local message = compliments[ceil(rnd(#compliments))]
 		message = message .. ' +' .. self.powerup_streak .. '000'
 		self:show_message(message)
@@ -1055,7 +1015,7 @@ function state.gameplay:on_enemy_killed(enemy)
 		self.to_next_powerup -= 1
 		if self.to_next_powerup == 0 then
 			self.to_next_powerup = 7 + self.powerup_streak + flr(self.difficulty) * flr(self.difficulty)
-			add(self.entities, class.powerup(enemy.x, enemy.y, enemy.z))
+			self:queue_entity(class.powerup(enemy.x, enemy.y, enemy.z))
 		end
 	end
 	if not self.player.jumping and not self.web.zapping then
@@ -1073,12 +1033,12 @@ function state.gameplay:on_enemy_killed(enemy)
 		end
 		self.score += point_value
 		local x, y = self.p3d:to2d(enemy.x, enemy.y, enemy.z)
-		add(self.entities, class.score_popup(point_value .. '00', x, y, color))
+		self:queue_entity(class.score_popup(point_value .. '00', x, y, color))
 	end
 	if enemy:is(class.thwomp) then self.difficulty += .1 end
 	if enemy:is(class.phantom) then self.difficulty += 1/3 end
 	for i = 1, 5 do
-		add(self.entities, class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
+		self:queue_entity(class.particle(enemy.x, enemy.y, enemy.z, enemy.color))
 	end
 	freeze_frames += 4
 	screen_shake_frame += 3
@@ -1097,7 +1057,7 @@ end
 
 function state.gameplay:on_phantom_spawned_enemy(position, z)
 	if #self.entities < self.entity_limit then
-		add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
+		self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
 		sfx(sound.phantom_spit, 2)
 	end
 end
@@ -1113,13 +1073,12 @@ function state.gameplay:init_listeners()
 	}
 end
 
-
 function state.gameplay:init_menu_items()
 	menuitem(1, 'retry (same web)', function()
-		state_manager:switch(state.gameplay, state.gameplay.web)
+		switch_state(state.gameplay, state.gameplay.web)
 	end)
 	menuitem(2, 'back to menu', function()
-		state_manager:switch(state.title, true)
+		switch_state(state.title, true)
 	end)
 	menuitem(3, 'invert controls', function()
 		dset(save_data_id.control_direction, dget(save_data_id.control_direction) == 0 and 1 or 0)
@@ -1130,6 +1089,7 @@ function state.gameplay:enter(web)
 	self.p3d = class.p3d()
 	self.p3d.oz = -2/3
 	self.web = web
+	self.queue = {}
 	self.entities = {}
 	self.player = add(self.entities, class.player(self.web, 1))
 	self:init_stars()
@@ -1159,6 +1119,10 @@ function state.gameplay:enter(web)
 	self:init_menu_items()
 end
 
+function state.gameplay:queue_entity(entity)
+	add(self.queue, entity)
+end
+
 function state.gameplay:is_colliding(a, b)
 	if not (a:is(class.physical) and b:is(class.physical)) then return false end
 	local distance = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)
@@ -1177,7 +1141,7 @@ function state.gameplay:zap()
 	self.web:zap()
 	self.zapper_online = false
 	self.difficulty -= .1
-	if self.difficulty < 1 then self.difficulty = 1 end
+	self.difficulty = max(self.difficulty, 1)
 	self.powerup_streak = 0
 	self:show_message 'eat electric death!'
 	music(bgm.zapper)
@@ -1224,10 +1188,10 @@ function state.gameplay:update()
 			self.timer.flipper -= self.difficulty
 			while self.timer.flipper <= 0 do
 				self.timer.flipper += 90 + rnd(60)
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+				self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty))
 				if self.difficulty > 1.5 and rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty))
+						self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty))
 					end
 					self.difficulty -= .05
 				end
@@ -1236,10 +1200,10 @@ function state.gameplay:update()
 			self.timer.small_flipper -= self.difficulty
 			while self.timer.small_flipper <= 0 do
 				self.timer.small_flipper += 400 + rnd(400)
-				add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+				self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
 				if rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						add(self.entities, class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+						self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
 					end
 					self.difficulty -= .05
 				end
@@ -1248,11 +1212,11 @@ function state.gameplay:update()
 			self.timer.thwomp -= self.difficulty
 			while self.timer.thwomp <= 0 do
 				self.timer.thwomp += 1600 + rnd(700)
-				add(self.entities, class.thwomp(self.web, self.difficulty))
+				self:queue_entity(class.thwomp(self.web, self.difficulty))
 				self.difficulty -= .1
 				if rnd(1) > .9 then
 					for i = 1, flr(self.difficulty) do
-						add(self.entities, class.thwomp(self.web, self.difficulty))
+						self:queue_entity(class.thwomp(self.web, self.difficulty))
 					end
 				end
 				sfx(sound.spawn, 3)
@@ -1260,7 +1224,7 @@ function state.gameplay:update()
 			self.timer.phantom -= self.difficulty
 			while self.timer.phantom <= 0 do
 				self.timer.phantom += 2000 + rnd(1000)
-				add(self.entities, class.phantom(self.web, self.difficulty))
+				self:queue_entity(class.phantom(self.web, self.difficulty))
 				self.difficulty -= 1/3
 				sfx(sound.spawn, 3)
 			end
@@ -1269,7 +1233,16 @@ function state.gameplay:update()
 
 	-- update web and entities
 	self.web:update()
-	for entity in all(self.entities) do
+	for i = #self.entities, 1, -1 do
+		local entity = self.entities[i]
+		if entity.dead then del(self.entities, entity) end
+	end
+	for entity in all(self.queue) do
+		add(self.entities, entity)
+		del(self.queue, entity)
+	end
+	for i = 1, #self.entities do
+		local entity = self.entities[i]
 		entity:update()
 		if entity:is(class.physical) and entity.position then
 			entity.x, entity.y = self.web:get_position(entity.position, entity.h)
@@ -1278,7 +1251,8 @@ function state.gameplay:update()
 
 	-- zapper
 	if self.web.zapping then
-		for entity in all(self.entities) do
+		for i = 1, #self.entities do
+			local entity = self.entities[i]
 			if entity:is(class.enemy) and not entity:is(class.phantom) and abs(entity.z - self.web.zapping) < .01 and not entity.jumping then
 				entity:die()
 			end
@@ -1300,11 +1274,6 @@ function state.gameplay:update()
 		end
 	end
 
-	-- remove entities
-	for entity in all(self.entities) do
-		if entity.dead then del(self.entities, entity) end
-	end
-
 	-- game over
 	if self.player.z < self.web.min_z then
 		if not self.doomed then
@@ -1313,12 +1282,12 @@ function state.gameplay:update()
 		end
 		self.game_over_timer += 1
 		if self.game_over_timer >= self.game_over_time then
-			state_manager:switch(state.game_over)
+			switch_state(state.game_over)
 		end
 	end
 
 	-- cosmetic
-	for star in all(self.stars) do star:update(1) end
+	for i = 1, #self.stars do self.stars[i]:update(1) end
 	local target_hx = 64 + (self.player.x - 64) * 1/6
 	local target_hy = 64 + (self.player.y - 64) * 1/6
 	if not self.intro then
@@ -1362,11 +1331,9 @@ function state.gameplay:draw()
 	--draw world
 	local shake = screen_shake[min(screen_shake_frame, #screen_shake)]
 	camera(shake[1], shake[2])
-	for star in all(self.stars) do star:draw(self.p3d) end
+	for i = 1, #self.stars do self.stars[i]:draw(self.p3d) end
 	self.web:draw(self.p3d, self.player.caught and 8 or 3)
-	for entity in all(self.entities) do
-		entity:draw(self.p3d)
-	end
+	for i = 1, #self.entities do self.entities[i]:draw(self.p3d) end
 	camera()
 
 	-- draw hud
@@ -1453,14 +1420,14 @@ function state.title:update()
 	elseif self.state == 2 then
 		self.p3d.oz -= 1/60
 		if self.p3d.oz < -1 then
-			state_manager:switch(state.gameplay, self.web)
+			switch_state(state.gameplay, self.web)
 		end
 	end
 
 	-- cosmetic
 	local target_title_oy = self.state == 1 and -40 or 0
 	self.title_oy += (target_title_oy - self.title_oy) * .1
-	for star in all(self.stars) do star:update(1) end
+	for i = 1, #self.stars do self.stars[i]:update(1) end
 	if self.state == 0 and self.title_z == 1 then
 		self.title_uptime += 1
 	end
@@ -1493,8 +1460,9 @@ function state.title:update()
 end
 
 function state.title:draw()
-	for star in all(self.stars) do star:draw(self.p3d) end
+	for i = 1, #self.stars do self.stars[i]:draw(self.p3d) end
 	self.web:draw(self.p3d, self.web_alpha < 1/2 and 0 or self.web_alpha < 2/3 and 1 or 3)
+
 	local x = 64 + 3.99 * sin(uptime / 480)
 	local y = 64 + self.title_oy
 	pal(7, 1)
@@ -1530,6 +1498,7 @@ function state.title:draw()
 		end
 		printoc('hi score: ' .. to_padded_score(dget(save_data_id.high_score)), 64, 2, 12, 0)
 	end
+	
 end
 
 state.game_over = {}
@@ -1546,7 +1515,7 @@ end
 function state.game_over:update()
 	self.timer -= 1
 	if self.timer == 0 then
-		state_manager:switch(state.results)
+		switch_state(state.results)
 	end
 end
 
@@ -1585,8 +1554,8 @@ function state.results:update()
 		end
 	end
 	if self.menu_timer == 0 then
-		if btnp(4) then state_manager:switch(state.gameplay, state.gameplay.web) end
-		if btnp(5) then state_manager:switch(state.title, true) end
+		if btnp(4) then switch_state(state.gameplay, state.gameplay.web) end
+		if btnp(5) then switch_state(state.title, true) end
 	end
 end
 
@@ -1611,7 +1580,7 @@ end
 -->8
 -- main loop
 
-local function apply_audio_effects()
+function apply_audio_effects()
 	poke(0x5f40, 0b1000) -- slowdown (channel 3)
 	poke(0x5f41, 0b1100) -- delay (channel 2, 3)
 	poke(0x5f43, 0b1000) -- distortion (channel 0)
@@ -1619,17 +1588,17 @@ end
 
 function _init()
 	apply_audio_effects()
-	state_manager:switch(state.title)
+	switch_state(state.title)
 end
 
 function _update60()
 	uptime += 1
-	state_manager:call 'update'
+	current_state:update()
 end
 
 function _draw()
 	cls()
-	state_manager:call 'draw'
+	current_state:draw()
 end
 __gfx__
 0000000000000cccccc00000000ea000000f70000000099999900000000000000000000000000000000000000000000000000000000000000000000000000000
