@@ -1139,6 +1139,7 @@ end
 
 function state.gameplay:zap()
 	self.web:zap()
+	self.player.caught:die()
 	self.zapper_online = false
 	self.difficulty -= .1
 	self.difficulty = max(self.difficulty, 1)
@@ -1152,9 +1153,14 @@ function state.gameplay:update()
 
 	-- input
 	if not self.intro then
-		if btnp(5) then self.player:jump() end
-		if btnp(5) and self.player.caught and self.zapper_online then
-			self:zap()
+		if btnp(5) then
+			if self.player.caught then
+				if self.zapper_online and self.player.z > self.web.min_z then
+					self:zap()
+				end
+			else
+				self.player:jump()
+			end
 		end
 	end
 
@@ -1837,4 +1843,3 @@ __music__
 04 41561644
 00 41581844
 00 415b4344
-
