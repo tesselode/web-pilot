@@ -1112,6 +1112,7 @@ function state.gameplay:enter(web)
 	self.message_color = 12
 	self.rolling_score = self.score
 	self.doomed = false
+	music(-1)
 	sfx(sound.intro, 2)
 	self:show_message('arriving at web ' .. self.web.name, 11)
 
