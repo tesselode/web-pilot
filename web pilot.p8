@@ -708,7 +708,7 @@ class.thwomp = new_class({
 	jump_power = .1,
 	gravity = .005,
 	starting_health = 12,
-	point_value = 10,
+	point_value = 5,
 	color = 8,
 }, class.enemy)
 
@@ -795,7 +795,7 @@ end
 class.phantom = new_class({
 	radius = 24,
 	color = 7,
-	point_value = 50,
+	point_value = 20,
 	push_back = .025,
 }, class.enemy)
 
