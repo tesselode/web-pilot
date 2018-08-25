@@ -449,7 +449,7 @@ end
 class.physical = new_class()
 
 class.player = new_class({
-	radius = 8,
+	radius = 6,
 	acceleration = .01,
 	friction = .05,
 	reload_time = 5,
@@ -602,8 +602,8 @@ class.enemy = new_class({}, class.physical)
 
 class.flipper = new_class({
 	base_speed = .0005,
-	flip_interval = 45,
-	flip_speed = 1/20,
+	flip_interval = 30,
+	flip_speed = 1/30,
 	drag_speed = .00025,
 }, class.enemy)
 
