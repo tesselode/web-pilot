@@ -145,7 +145,12 @@ function class.p3d:circfill(x, y, z, r, col)
 	z += self.oz
 	z = max(0, z)
 	for i = 1, 4 do z *= z end
-	circfill(x, y, r * z * z, col)
+	r = r * z * z
+	if r < 1 then
+		pset(x, y, col)
+	else
+		circfill(x, y, r, col)
+	end
 end
 
 function class.p3d:sspr(sx, sy, sw, sh, x, y, z, scale)
