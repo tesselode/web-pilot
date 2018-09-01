@@ -1109,8 +1109,8 @@ function state.gameplay:enter(web)
 	self.message_timer = 0
 	self.message_y = 64
 	self.message_color = 12
-	self.powerup_streak_display_timer = 1
-	self.powerup_streak_display_oy = 0
+	self.powerup_streak_display_timer = 0
+	self.powerup_streak_display_oy = 16
 	self.rolling_score = self.score
 	self.doomed = false
 	music(-1)
@@ -1358,9 +1358,9 @@ end
 
 function state.gameplay:draw_powerup_streak()
 	local sprite = self.powerup_streak > 0 and 20 or 19
-	local color = self.powerup_streak > 0 and 11 or 3
+	local color = self.powerup_streak > 0 and 12 or 13
 	spr(sprite, 0, 120 + self.powerup_streak_display_oy)
-	printo(self.powerup_streak, 10, 121 + self.powerup_streak_display_oy, color)
+	printo(self.powerup_streak .. 'x', 10, 121 + self.powerup_streak_display_oy, color)
 end
 
 function state.gameplay:draw_message()
