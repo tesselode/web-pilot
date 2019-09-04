@@ -206,17 +206,6 @@ model = {
 		{-.66667, -1, 0, 1, 1, 0},
 	}
 }
-bgm = {
-	title = 0,
-	game_over = 1,
-	doomed = 2,
-	high_score = 3,
-	caught = 8,
-	thwomp_arrived = 9,
-	zapper = 10,
-	phantom_arrived = 11,
-	phantom_killed = 12,
-}
 save_data_id = {
 	high_score = 0,
 	control_direction = 32,
@@ -692,7 +681,7 @@ function class.thwomp:update()
 	if self.z < self.web.min_z then
 		self.z += .001
 		if self.z >= self.web.min_z then
-			music(bgm.thwomp_arrived)
+			music '9'
 		end
 		return
 	end
@@ -780,7 +769,7 @@ function class.phantom:update()
 
 	-- cosmetic
 	if not self.announced_entrance and self.z > self.web.min_z then
-		music(bgm.phantom_arrived)
+		music '11'
 		self.announced_entrance = true
 	end
 	if self.flash_timer > 0 then self.flash_timer -= 1 end
@@ -789,7 +778,7 @@ end
 function class.phantom:die()
 	self.dead = true
 	conversation:say('enemy killed', self)
-	music(bgm.phantom_killed)
+	music '12'
 	freeze_frames += 4
 	screen_shake_frame += 4
 end
@@ -998,7 +987,7 @@ end
 
 function state.gameplay:on_player_caught()
 	self:show_message(threats[ceil(rnd(#threats))], 8)
-	music(bgm.caught)
+	music '8'
 end
 
 function state.gameplay:on_thwomp_landed()
@@ -1100,7 +1089,7 @@ function state.gameplay:zap()
 	self.powerup_streak = 0
 	self:show_message 'eat electric death!'
 	self.powerup_streak_display_timer = 1
-	music(bgm.zapper)
+	music '10'
 end
 
 function state.gameplay:update()
@@ -1239,7 +1228,7 @@ function state.gameplay:update()
 	if self.player.z < self.web.min_z then
 		if not self.doomed then
 			self.doomed = true
-			music(bgm.doomed)
+			music '2'
 		end
 		self.game_over_timer += 1
 		if self.game_over_timer >= self.game_over_time then
@@ -1343,7 +1332,7 @@ end
 state.title = {}
 
 function state.title:enter(quick)
-	music(bgm.title)
+	music '0'
 	self.p3d = class.p3d()
 	self.p3d.oz = quick and -1/6 or -2/3
 	self.web = class.web()
@@ -1489,7 +1478,7 @@ function state.game_over:enter()
 	sfx(-1, 1)
 	sfx(-1, 2)
 	sfx(-1, 3)
-	music(bgm.game_over)
+	music '1'
 	self.timer = 240
 end
 
@@ -1531,7 +1520,7 @@ function state.results:update()
 	if self.rolling_score == self.score and self.menu_timer > 0 then
 		self.menu_timer -= 1
 		if self.menu_timer == 0 then
-			if self.high_score then music(bgm.high_score) end
+			if self.high_score then music '3' end
 		end
 	end
 	if self.menu_timer == 0 then
