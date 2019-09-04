@@ -206,33 +206,6 @@ model = {
 		{-.66667, -1, 0, 1, 1, 0},
 	}
 }
-sound = {
-	shoot = 8,
-	jump = 9,
-	hit = 10,
-	flip_big = 11,
-	flip_small = 12,
-	caught = 13,
-	spawn = 14,
-	recharge = 15,
-	bonus = 16,
-	thwomp_arrived = 17,
-	thwomp_stomped = 18,
-	thwomp_hit = 19,
-	rim_kill = 20,
-	zapper = 21,
-	phantom_arrived = 22,
-	phantom_hit = 23,
-	phantom_killed = 24,
-	phantom_spit = 25,
-	menu_move = 26,
-	menu_back = 27,
-	launch = 28,
-	menu_select = 29,
-	intro = 30,
-	land = 31,
-	score_roll = 48,
-}
 bgm = {
 	title = 0,
 	game_over = 1,
@@ -463,7 +436,7 @@ function class.player:jump()
 	if not self.caught and not self.jumping and self.stun_timer <= 0 then
 		self.jumping = true
 		self.vz = self.jump_power
-		sfx(sound.jump, 1)
+		sfx(9, 1)
 	end
 end
 
@@ -651,7 +624,7 @@ function class.flipper:update()
 		self.r += self.flip_speed * self.flip_direction / 2 * (self.small and 2 or 1)
 		if self.flip_progress >= 1 then
 			self.flip_direction = 0
-			sfx(self.small and sound.flip_small or sound.flip_big, 2)
+			sfx(self.small and 12 or 11, 2)
 		end
 	end
 end
@@ -712,7 +685,7 @@ function class.thwomp:jump()
 	self.vz = self.z < self.web.min_z + .01 and .0002
 		or self.z > .99 and .0002
 		or -.0002 + rnd(.0002)
-	sfx(sound.jump, 2)
+	sfx(9, 2)
 end
 
 function class.thwomp:update()
@@ -747,7 +720,7 @@ end
 function class.thwomp:die()
 	self.dead = true
 	conversation:say('enemy killed', self)
-	sfx(sound.thwomp_stomped, 2)
+	sfx(18, 2)
 end
 
 function class.thwomp:collide(other)
@@ -757,7 +730,7 @@ function class.thwomp:collide(other)
 			self:die()
 		else
 			self.flash_timer = 4
-			sfx(sound.thwomp_hit, 0)
+			sfx(19, 0)
 		end
 	end
 end
@@ -830,7 +803,7 @@ function class.phantom:collide(other)
 			self:die()
 		else
 			self.flash_timer = 4
-			sfx(sound.phantom_hit, 2)
+			sfx(23, 2)
 		end
 	end
 end
@@ -963,7 +936,7 @@ end
 
 function state.gameplay:on_player_shot(position, z)
 	self:queue_entity(class.player_bullet(self.web, position, z))
-	sfx(sound.shoot, 0)
+	sfx(8, 0)
 end
 
 function state.gameplay:on_powerup_collected(x, y, z)
@@ -973,7 +946,7 @@ function state.gameplay:on_powerup_collected(x, y, z)
 	if not self.zapper_online then
 		self.zapper_online = true
 		self:show_message 'superzapper recharge'
-		sfx(sound.recharge, 1)
+		sfx(15, 1)
 	else
 		if (not self.player.jumping) or self.powerup_streak == 0 then
 			self.powerup_streak += 1
@@ -984,7 +957,7 @@ function state.gameplay:on_powerup_collected(x, y, z)
 		local message = compliments[ceil(rnd(#compliments))]
 		message = message .. ' +' .. self.powerup_streak .. '000'
 		self:show_message(message)
-		sfx(sound.bonus, 1)
+		sfx(16, 1)
 	end
 end
 
@@ -1005,7 +978,7 @@ function state.gameplay:on_enemy_killed(enemy)
 				color = 14
 			elseif enemy.z == 1 then
 				point_value *= 3
-				sfx(sound.rim_kill, 1)
+				sfx(20, 1)
 				color = 11
 			end
 		end
@@ -1020,7 +993,7 @@ function state.gameplay:on_enemy_killed(enemy)
 	end
 	freeze_frames += 4
 	screen_shake_frame += 3
-	sfx(sound.hit, 0)
+	sfx(10, 0)
 end
 
 function state.gameplay:on_player_caught()
@@ -1030,13 +1003,13 @@ end
 
 function state.gameplay:on_thwomp_landed()
 	self.player:stun()
-	sfx(sound.thwomp_stomped, 2)
+	sfx(18, 2)
 end
 
 function state.gameplay:on_phantom_spawned_enemy(position, z)
 	if #self.entities < self.entity_limit then
 		self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
-		sfx(sound.phantom_spit, 2)
+		sfx(25, 2)
 	end
 end
 
@@ -1093,7 +1066,7 @@ function state.gameplay:enter(web)
 	self.rolling_score = self.score
 	self.doomed = false
 	music(-1)
-	sfx(sound.intro, 2)
+	sfx(30, 2)
 	self:show_message('arriving at web ' .. self.web.name, 11)
 
 	self:init_listeners()
@@ -1165,7 +1138,7 @@ function state.gameplay:update()
 			self.player.z = 1
 			self.intro = false
 			sfx(-1, 2)
-			sfx(sound.land, 3)
+			sfx(31, 3)
 		end
 	end
 
@@ -1183,7 +1156,7 @@ function state.gameplay:update()
 					end
 					self.difficulty -= .05
 				end
-				sfx(sound.spawn, 3)
+				sfx(14, 3)
 			end
 			self.timer.small_flipper -= self.difficulty
 			while self.timer.small_flipper <= 0 do
@@ -1195,7 +1168,7 @@ function state.gameplay:update()
 					end
 					self.difficulty -= .05
 				end
-				sfx(sound.spawn, 3)
+				sfx(14, 3)
 			end
 			self.timer.thwomp -= self.difficulty
 			while self.timer.thwomp <= 0 do
@@ -1207,14 +1180,14 @@ function state.gameplay:update()
 						self:queue_entity(class.thwomp(self.web, self.difficulty))
 					end
 				end
-				sfx(sound.spawn, 3)
+				sfx(14, 3)
 			end
 			self.timer.phantom -= self.difficulty
 			while self.timer.phantom <= 0 do
 				self.timer.phantom += 2000 + rnd(1000)
 				self:queue_entity(class.phantom(self.web, self.difficulty))
 				self.difficulty -= 1/3
-				sfx(sound.spawn, 3)
+				sfx(14, 3)
 			end
 		end
 	end
@@ -1390,39 +1363,39 @@ function state.title:update()
 	if self.state == 0 then
 		if btnp(4) then
 			self.state = 1
-			sfx(sound.menu_select, 1)
+			sfx(29, 1)
 		end
 	elseif self.state == 1 then
 		if btnp(2) then
 			if self.option_selected > 1 then
 				self.option_selected -= 1
-				sfx(sound.menu_move, 1)
+				sfx(26, 1)
 			end
 		end
 		if btnp(3) then
 			if self.option_selected < 3 then
 				self.option_selected += 1
-				sfx(sound.menu_move, 1)
+				sfx(26, 1)
 			end
 		end
 		if btnp(4) then
 			if self.option_selected == 1 then
 				music(-1)
-				sfx(sound.launch, 1)
+				sfx(28, 1)
 				self.state = 2
 			end
 			if self.option_selected == 2 and not self.changing_web then
-				sfx(sound.menu_select, 1)
+				sfx(29, 1)
 				self.changing_web = true
 			end
 			if self.option_selected == 3 then
-				sfx(sound.menu_select, 1)
+				sfx(29, 1)
 				dset(save_data_id.control_direction, dget(save_data_id.control_direction) == 0 and 1 or 0)
 			end
 		end
 		if btnp(5) then
 			self.state = 0
-			sfx(sound.menu_back, 1)
+			sfx(27, 1)
 			self.title_uptime = 0
 		end
 	elseif self.state == 2 then
@@ -1550,7 +1523,7 @@ function state.results:update()
 	self.score_roll_timer -= 1
 	if self.score_roll_timer <= 0 and self.rolling_score < self.score then
 		self.rolling_score += (self.score - self.rolling_score) * .1
-		sfx(sound.score_roll, 1)
+		sfx(48, 1)
 		if self.rolling_score > self.score - .1 then
 			self.rolling_score = self.score
 		end
