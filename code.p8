@@ -3,54 +3,35 @@ version 18
 __lua__
 -- utilities
 
-glyphs = "…∧░➡️⧗▤⬆️☉🅾️◆█★⬇️✽●♥웃⌂⬅️▥❎🐱ˇ▒♪😐"
+glyphs = '⬆️⬇️⬅️➡️🅾️❎'
 
 function get_text_width(text)
 	local width = 0
 	for i = 1, #text do
-		local char = sub(text, i, i)
 		local is_glyph = false
 		for j = 1, #glyphs do
-			if char == sub(glyphs, j, j) then
+			if sub(text, i, i) == sub(glyphs, j, j) then
 				is_glyph = true
+				break
 			end
 		end
-		width += (is_glyph and 6 or 4)
+		width += (is_glyph and 8 or 4)
 	end
 	return width
 end
 
-function printo(text, x, y, col, outline_col)
-	outline_col = outline_col or 0
-	print(text, x - 1, y - 1, outline_col)
-	print(text, x, y - 1, outline_col)
-	print(text, x + 1, y - 1, outline_col)
-	print(text, x + 1, y, outline_col)
-	print(text, x + 1, y + 1, outline_col)
-	print(text, x, y + 1, outline_col)
-	print(text, x - 1, y + 1, outline_col)
-	print(text, x - 1, y, outline_col)
-	print(text, x, y, col)
-end
-
-function printc(text, x, y, col)
-	x -= get_text_width(text) / 2
-	print(text, x, y, col)
-end
-
-function printoc(text, x, y, col, outline_col)
-	x -= get_text_width(text) / 2
-	printo(text, x, y, col, outline_col)
-end
-
-function printr(text, x, y, col)
-	x -= get_text_width(text)
-	print(text, x, y, col)
-end
-
-function printor(text, x, y, col, outline_col)
-	x -= get_text_width(text)
-	printo(text, x, y, col, outline_col)
+function printf(text, x, y, align, color, outline_color)
+	x -= get_text_width(text) * align
+	if outline_color then
+		for xx = x - 1, x + 1 do
+			for yy = y - 1, y + 1 do
+				if not (xx == 0 and yy == 0) then
+					print(text, xx, yy, outline_color)
+				end
+			end
+		end
+	end
+	print(text, x, y, color)
 end
 
 function wrap(x, limit)
@@ -952,7 +933,7 @@ end
 
 function class.score_popup:draw()
 	local color = self.life / 15 % 1 < .5 and self.color or 7
-	printc(self.text, self.x, self.y, color)
+	printf(self.text, self.x, self.y, .5, color)
 end
 
 -->8
@@ -1348,7 +1329,7 @@ function state.gameplay:draw_zapper_display()
 		spr(sprite, 120, 120)
 		if self.player.caught and not self.doomed then
 			local color = (uptime / 30) % 1 > .5 and 7 or 9
-			printor("press ❎ to use ", 120, 121, color)
+			printf("press ❎ to use ", 120, 121, 1, color, 0)
 		end
 	end
 end
@@ -1357,20 +1338,20 @@ function state.gameplay:draw_powerup_streak()
 	local sprite = self.powerup_streak > 0 and 20 or 19
 	local color = self.powerup_streak > 0 and 12 or 13
 	spr(sprite, 0, 120 + self.powerup_streak_display_oy)
-	printo(self.powerup_streak .. 'x', 10, 121 + self.powerup_streak_display_oy, color)
+	printf(self.powerup_streak .. 'x', 10, 121 + self.powerup_streak_display_oy, 0, color, 0)
 end
 
 function state.gameplay:draw_message()
 	if self.message_timer > 0 then
 		local color = (uptime / 30) % 1 > .5 and 7 or self.message_color
-		printoc(self.message, 64, self.message_y, color)
+		printf(self.message, 64, self.message_y, .5, color, 0)
 	end
 end
 
 function state.gameplay:draw_score()
 	local y = 2 + 2 * (self.score - self.rolling_score)
 	if y > 6 then y = 6 end
-	printoc(to_padded_score(self.rolling_score), 64, y, 11)
+	printf(to_padded_score(self.rolling_score), 64, y, .5, 11, 0)
 end
 
 function state.gameplay:draw()
@@ -1500,29 +1481,29 @@ function state.title:draw()
 
 	if self.state == 0 and self.title_z == 1 then
 		if (self.title_uptime / 1250) % 1 < 1/3 then
-			printoc('mmxviii tesselode', 64, 88, 6, 0)
-			printoc('press 🅾️ to start', 64, 96, 11, 0)
+			printf('mmxviii tesselode', 64, 88, .5, 6, 0)
+			printf('press 🅾️ to start', 64, 96, .5, 11, 0)
 		elseif (self.title_uptime / 1250) % 1 < 2/3 then
-			printoc('a remix of the tempest games', 64, 88, 6, 0)
-			printoc('by dave theurer and jeff minter', 64, 96, 6, 0)
+			printf('a remix of the tempest games', 64, 88, .5, 6, 0)
+			printf('by dave theurer and jeff minter', 64, 96, .5, 6, 0)
 		else
-			printoc('⬅️➡️ move', 64, 88, 6, 0)
-			printoc('🅾️ shoot    ❎ jump / zap', 64, 96, 6, 0)
+			printf('⬅️➡️ move', 64, 88, .5, 6, 0)
+			printf('🅾️ shoot    ❎ jump / zap', 64, 96, .5, 6, 0)
 		end
 	end
 	if self.state == 1 then
 		local color = self.option_selected == 1 and 11 or 5
-		printoc('play', 64, 104, color, 0)
+		printf('play', 64, 104, .5, color, 0)
 		color = self.option_selected == 2 and 11 or 5
-		printoc('change destination', 64, 112, color, 0)
+		printf('change destination', 64, 112, .5, color, 0)
 		color = self.option_selected == 3 and 11 or 5
 		if dget(save_data_id.control_direction) == 0 then
-			printoc('controls: normal', 64, 120, color, 0)
+			printf('controls: normal', 64, 120, .5, color, 0)
 		end
 		if dget(save_data_id.control_direction) == 1 then
-			printoc('controls: inverted', 64, 120, color, 0)
+			printf('controls: inverted', 64, 120, .5, color, 0)
 		end
-		printoc('hi score: ' .. to_padded_score(dget(save_data_id.high_score)), 64, 2, 12, 0)
+		printf('hi score: ' .. to_padded_score(dget(save_data_id.high_score)), 64, 2, .5, 12, 0)
 	end
 	
 end
@@ -1586,20 +1567,20 @@ function state.results:update()
 end
 
 function state.results:draw()
-	printc('your score:', 64, 49, 1)
-	printc('your score:', 64, 48, 12)
-	printc(to_padded_score(self.rolling_score), 64, 57, 5)
-	printc(to_padded_score(self.rolling_score), 64, 56, 7)
+	printf('your score:', 64, 49, .5, 1)
+	printf('your score:', 64, 48, .5, 12)
+	printf(to_padded_score(self.rolling_score), 64, 57, .5, 5)
+	printf(to_padded_score(self.rolling_score), 64, 56, .5, 7)
 	if self.high_score and self.menu_timer == 0 then
 		local y = 72 + 2.99 * sin(uptime / 100)
-		printc('new high score!', 64, y + 1, 2)
-		printc('new high score!', 64, y, 14)
+		printf('new high score!', 64, y + 1, .5, 2)
+		printf('new high score!', 64, y, .5, 14)
 	end
 	if self.menu_timer == 0 then
-		printc('🅾️ retry same web', 64, 97, 5)
-		printc('🅾️ retry same web', 64, 96, 7)
-		printc('❎ back to menu', 64, 105, 5)
-		printc('❎ back to menu', 64, 104, 7)
+		printf('🅾️ retry same web', 64, 97, .5, 5)
+		printf('🅾️ retry same web', 64, 96, .5, 7)
+		printf('❎ back to menu', 64, 105, .5, 5)
+		printf('❎ back to menu', 64, 104, .5, 7)
 	end
 end
 
