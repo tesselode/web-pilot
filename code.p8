@@ -162,25 +162,12 @@ end
 
 function class.model:draw(p3d, x, y, z, r, sx, sy, sz, col)
 	local c, s = cos(r), sin(r)
-	for i = 1, #self.lines do
-		local l = self.lines[i]
+	for l in all(self.lines) do
 		local ax, ay, az, bx, by, bz = l[1], l[2], l[3], l[4], l[5], l[6]
 		ax, ay = c * ax - s * ay, s * ax + c * ay
-		ax *= sx
-		ay *= sy
-		az *= sz
-		ax += x
-		ay += y
-		az += z
 		bx, by = c * bx - s * by, s * bx + c * by
-		bx *= sx
-		by *= sy
-		bz *= sz
-		bx += x
-		by += y
-		bz += z
-		local x1, y1 = p3d:to2d(ax, ay, az)
-		local x2, y2 = p3d:to2d(bx, by, bz)
+		local x1, y1 = p3d:to2d(ax * sx + x, ay * sy + y, az * sz + z)
+		local x2, y2 = p3d:to2d(bx * sx + x, by * sy + y, bz * sz + z)
 		line(x1, y1, x2, y2, col)
 	end
 end
