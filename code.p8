@@ -626,7 +626,7 @@ function class.flipper:collide(other)
 	if other:is(class.player) and (not other.caught) and self.z == 1 and self.flip_direction == 0 then
 		other.caught = self
 		self.dragging = other
-		conversation:say('player caught')
+		conversation:say 'player caught'
 	end
 	if other:is(class.player_bullet) and not self.dragging then
 		self:die()
@@ -734,6 +734,7 @@ class.phantom = new_class({
 	color = 7,
 	point_value = 20,
 	push_back = .025,
+	segment_z_multipliers = {.99, .5, .25},
 }, class.enemy)
 
 function class.phantom:new(web, difficulty)
@@ -796,9 +797,9 @@ function class.phantom:collide(other)
 end
 
 function class.phantom:draw(p3d)
-	p3d:sspr(40, 16, 16, 16, self.x, self.y, self.z + (self.web.min_z - self.z) * .99, 2)
-	p3d:sspr(40, 16, 16, 16, self.x, self.y, self.z + (self.web.min_z - self.z) * .5, 2)
-	p3d:sspr(40, 16, 16, 16, self.x, self.y, self.z + (self.web.min_z - self.z) * .25, 2)
+	for z in all(self.segment_z_multipliers) do
+		p3d:sspr(40, 16, 16, 16, self.x, self.y, self.z + (self.web.min_z - self.z) * z, 2)
+	end
 	if self.flash_timer > 0 then pal(9, 7) end
 	p3d:sspr(40, 0, 16, 16, self.x, self.y, self.z, 2)
 	pal()
