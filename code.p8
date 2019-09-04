@@ -429,8 +429,8 @@ class.player = new_class({
 	acceleration = .01,
 	friction = .05,
 	reload_time = 5,
-	shot_heat = 1/5,
-	shot_cooldown_speed = 1/20,
+	shot_heat = .2,
+	shot_cooldown_speed = .05,
 	jump_power = .003,
 	gravity = .0001,
 	stun_time = 90,
@@ -569,9 +569,10 @@ function class.player_bullet:collide(other)
 end
 
 function class.player_bullet:draw(p3d)
-	p3d:line(self.x - 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
-	p3d:line(self.x, self.y, self.z, self.x, self.y, self.z + .01, 10)
-	p3d:line(self.x + 1, self.y, self.z, self.x, self.y, self.z + .01, 10)
+	local x, y, z = self.x, self.y, self.z
+	p3d:line(x - 1, y, z, x, y, z + .01, 10)
+	p3d:line(x, y, z, x, y, z + .01, 10)
+	p3d:line(x + 1, y, z, x, y, z + .01, 10)
 end
 
 class.enemy = new_class({}, class.physical)
@@ -579,7 +580,7 @@ class.enemy = new_class({}, class.physical)
 class.flipper = new_class({
 	base_speed = .0005,
 	flip_interval = 30,
-	flip_speed = 1/30,
+	flip_speed = .03333,
 	drag_speed = .00025,
 }, class.enemy)
 
@@ -974,7 +975,7 @@ function state.gameplay:on_powerup_collected(x, y, z)
 		self:show_message 'superzapper recharge'
 		sfx(sound.recharge, 1)
 	else
-	 if (not self.player.jumping) or self.powerup_streak == 0 then
+		if (not self.player.jumping) or self.powerup_streak == 0 then
 			self.powerup_streak += 1
 			self.powerup_streak_display_timer = 1
 		end
