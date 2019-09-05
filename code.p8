@@ -240,35 +240,20 @@ class.web = new_class({
 	zap_speed = .002,
 })
 
-function class.web:pick_name()
-	local letters = 'abcdefghijklmnopqrstuvwxyz'
-	local numbers = '1234567890'
-	local prefix_length = 1 + flr(rnd(2))
-	local suffix_length = 1 + flr(rnd(2))
-	if prefix_length + suffix_length < 3 then suffix_length += 1 end
-	self.name = ''
-	for i = 1, prefix_length do
-		local chars = i == 1 and letters or letters .. numbers
-		local pos = ceil(rnd(#chars))
-		self.name = self.name .. sub(chars, pos, pos)
-	end
-	self.name = self.name .. '-'
-	for i = 1, suffix_length do
-		local chars = letters .. numbers
-		local pos = ceil(rnd(#chars))
-		self.name = self.name .. sub(chars, pos, pos)
-	end
-end
-
-function class.web:generate()
+function class.web:generate(seed)
+	local entropy = rnd()
+	self.seed = seed or flr(rnd(0xffff.ffff))
+	self.name = sub(tostr(self.seed, true), 3, 6)
+	self.name = sub(self.name, 1, 2) .. '-' .. sub(self.name, 3, 4)
+	srand(self.seed)
 	self.points = {}
 	local lane_size = 16
 	local radius = 32 + rnd(24)
 	local angle = 0
 	local tilt_x = rnd(1/12)
 	local tilt_y = rnd(1/12)
-	local x = radius * cos(angle)
 	local y = radius * sin(angle)
+	local x = radius * cos(angle)
 	local start_x = x
 	local start_y = y
 	while true do
@@ -288,18 +273,20 @@ function class.web:generate()
 		if angle > new_angle then break end
 		angle = new_angle
 	end
+	srand(entropy)
 	-- regenerate if the last lane is too wide or narrow
-	local a = self.points[1]
-	local b = self.points[#self.points]
-	local dist = sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))
-	if dist > lane_size or dist < lane_size * .9 then
-		self:generate()
+	if not seed then
+		local a = self.points[1]
+		local b = self.points[#self.points]
+		local dist = sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))
+		if dist > lane_size or dist < lane_size * .9 then
+			self:generate()
+		end
 	end
 end
 
-function class.web:new()
-	self:generate()
-	self:pick_name()
+function class.web:new(seed)
+	self:generate(seed)
 	self.zapping = false
 end
 
