@@ -3,19 +3,10 @@ version 18
 __lua__
 -- utilities
 
-glyphs = '⬆️⬇️⬅️➡️🅾️❎'
-
 function get_text_width(text)
 	local width = 0
 	for i = 1, #text do
-		local is_glyph = false
-		for j = 1, #glyphs do
-			if sub(text, i, i) == sub(glyphs, j, j) then
-				is_glyph = true
-				break
-			end
-		end
-		width += (is_glyph and 8 or 4)
+		width += (sub(text, i, i) >= '█' and 8 or 4)
 	end
 	return width
 end
@@ -25,18 +16,11 @@ function printf(text, x, y, align, color, outline_color)
 	if outline_color then
 		for xx = x - 1, x + 1 do
 			for yy = y - 1, y + 1 do
-				if not (xx == 0 and yy == 0) then
-					print(text, xx, yy, outline_color)
-				end
+				print(text, xx, yy, outline_color)
 			end
 		end
 	end
 	print(text, x, y, color)
-end
-
-function wrap(x, limit)
-	while x <= 0 do x += limit end
-	return x % limit
 end
 
 function to_padded_score(score)
@@ -548,17 +532,17 @@ function class.flipper:new(state, p3d, web, player, difficulty, small, position,
 end
 
 function class.flipper:get_shortest_path_to_player()
-	local pos = flr(wrap(self.position, #self.web.points))
-	local player_pos = flr(wrap(self.player.position, #self.web.points))
+	local pos = flr(self.position % #self.web.points)
+	local player_pos = flr(self.player.position % #self.web.points)
 	local negative_dist, positive_dist = 0, 0
 	local test_pos = pos
 	while test_pos ~= player_pos do
-		test_pos = wrap(test_pos - 1, #self.web.points)
+		test_pos = (test_pos - 1) % #self.web.points
 		negative_dist += 1
 	end
 	test_pos = pos
 	while test_pos ~= player_pos do
-		test_pos = wrap(test_pos + 1, #self.web.points)
+		test_pos = (test_pos + 1) % #self.web.points
 		positive_dist += 1
 	end
 	return negative_dist < positive_dist and -1 or 1
