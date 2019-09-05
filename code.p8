@@ -52,26 +52,6 @@ function switch_state(state, ...)
 	if (current_state.enter) current_state:enter(...)
 end
 
-conversation = {_listeners = {}}
-
-function conversation:listen(message, f)
-	local listener = {message = message, f = f}
-	self._listeners[listener] = true
-	return listener
-end
-
-function conversation:say(message, ...)
-	for listener, _ in pairs(self._listeners) do
-		if listener.message == message then
-			listener.f(...)
-		end
-	end
-end
-
-function conversation:deafen(listener)
-	self._listeners[listener] = nil
-end
-
 function new_class(t, parent)
 	t = t or {}
 	function t:is(c)
@@ -396,7 +376,8 @@ class.player = new_class({
 	stun_time = 90,
 }, class.physical)
 
-function class.player:new(web, position)
+function class.player:new(state, web, position)
+	self.state = state
 	self.web = web
 	self.position = position
 	self.velocity = 0
@@ -416,7 +397,7 @@ function class.player:shoot()
 	if self.heat > 1 then
 		self.overheat = true
 	end
-	conversation:say('player shot', self.position, self.z)
+	self.state:on_player_shot(self.position, self.z)
 end
 
 function class.player:jump()
@@ -485,7 +466,7 @@ end
 function class.player:collide(other)
 	if other:is(class.powerup) then
 		other.dead = true
-		conversation:say('powerup collected', self.x, self.y, self.z)
+		self.state:on_powerup_collected(self.x, self.y, self.z)
 	end
 end
 
@@ -544,7 +525,8 @@ class.flipper = new_class({
 	drag_speed = .00025,
 }, class.enemy)
 
-function class.flipper:new(p3d, web, player, difficulty, small, position, z)
+function class.flipper:new(state, p3d, web, player, difficulty, small, position, z)
+	self.state = state
 	self.p3d = p3d
 	self.web = web
 	self.player = player
@@ -619,14 +601,14 @@ end
 function class.flipper:die()
 	self.dead = true
 	if self.dragging then self.dragging.caught = false end
-	conversation:say('enemy killed', self)
+	self.state:on_enemy_killed(self)
 end
 
 function class.flipper:collide(other)
 	if other:is(class.player) and (not other.caught) and self.z == 1 and self.flip_direction == 0 then
 		other.caught = self
 		self.dragging = other
-		conversation:say 'player caught'
+		self.state:on_player_caught()
 	end
 	if other:is(class.player_bullet) and not self.dragging then
 		self:die()
@@ -649,7 +631,8 @@ class.thwomp = new_class({
 	color = 8,
 }, class.enemy)
 
-function class.thwomp:new(web, difficulty)
+function class.thwomp:new(state, web, difficulty)
+	self.state = state
 	self.web = web
 	self.difficulty = difficulty
 	self.position = flr(rnd(#self.web.points)) + .5
@@ -693,7 +676,7 @@ function class.thwomp:update()
 			self.jumping = false
 			freeze_frames += 2
 			screen_shake_frame += 2
-			conversation:say 'thwomp landed'
+			self.state:on_thwomp_landed()
 		end
 	else
 		self.jump_timer -= self.difficulty / 2
@@ -706,7 +689,7 @@ end
 
 function class.thwomp:die()
 	self.dead = true
-	conversation:say('enemy killed', self)
+	self.state:on_enemy_killed(self)
 	sfx(18, 2)
 end
 
@@ -737,7 +720,8 @@ class.phantom = new_class({
 	segment_z_multipliers = {.99, .5, .25},
 }, class.enemy)
 
-function class.phantom:new(web, difficulty)
+function class.phantom:new(state, web, difficulty)
+	self.state = state
 	self.web = web
 	self.difficulty = difficulty
 	self.uptime = 0
@@ -762,7 +746,7 @@ function class.phantom:update()
 		self.spawn_timer -= self.difficulty / 3
 		while self.spawn_timer <= 0 do
 			self.spawn_timer += 30
-			conversation:say('phantom spawned enemy', self.position, self.z)
+			self.state:on_phantom_spawned_enemy(self.position, self.z)
 		end
 	end
 
@@ -776,7 +760,7 @@ end
 
 function class.phantom:die()
 	self.dead = true
-	conversation:say('enemy killed', self)
+	self.state:on_enemy_killed(self)
 	music '12'
 	freeze_frames += 4
 	screen_shake_frame += 4
@@ -996,20 +980,9 @@ end
 
 function state.gameplay:on_phantom_spawned_enemy(position, z)
 	if #self.entities < self.entity_limit then
-		self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
+		self:queue_entity(class.flipper(self, self.p3d, self.web, self.player, self.difficulty, rnd(1) > .5, position, z))
 		sfx(25, 2)
 	end
-end
-
-function state.gameplay:init_listeners()
-	self.listeners = {
-		conversation:listen('player shot', function(...) self:on_player_shot(...) end),
-		conversation:listen('powerup collected', function(...) self:on_powerup_collected(...) end),
-		conversation:listen('enemy killed', function(...) self:on_enemy_killed(...) end),
-		conversation:listen('player caught', function(...) self:on_player_caught(...) end),
-		conversation:listen('thwomp landed', function(...) self:on_thwomp_landed(...) end),
-		conversation:listen('phantom spawned enemy', function(...) self:on_phantom_spawned_enemy(...) end)
-	}
 end
 
 function state.gameplay:init_menu_items()
@@ -1030,7 +1003,7 @@ function state.gameplay:enter(web)
 	self.web = web
 	self.queue = {}
 	self.entities = {}
-	self.player = add(self.entities, class.player(self.web, 1))
+	self.player = add(self.entities, class.player(self, self.web, 1))
 	self:init_stars()
 	self.score = 0
 	self.zapper_online = false
@@ -1057,7 +1030,6 @@ function state.gameplay:enter(web)
 	sfx(30, 2)
 	self:show_message('arriving at web ' .. self.web.name, 11)
 
-	self:init_listeners()
 	self:init_menu_items()
 end
 
@@ -1137,10 +1109,10 @@ function state.gameplay:update()
 			self.timer.flipper -= self.difficulty
 			while self.timer.flipper <= 0 do
 				self.timer.flipper += 90 + rnd(60)
-				self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty))
+				self:queue_entity(class.flipper(self, self.p3d, self.web, self.player, self.difficulty))
 				if self.difficulty > 1.5 and rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty))
+						self:queue_entity(class.flipper(self, self.p3d, self.web, self.player, self.difficulty))
 					end
 					self.difficulty -= .05
 				end
@@ -1149,10 +1121,10 @@ function state.gameplay:update()
 			self.timer.small_flipper -= self.difficulty
 			while self.timer.small_flipper <= 0 do
 				self.timer.small_flipper += 400 + rnd(400)
-				self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+				self:queue_entity(class.flipper(self, self.p3d, self.web, self.player, self.difficulty, true))
 				if rnd(1) > .95 then
 					for i = 1, flr(self.difficulty * 2) do
-						self:queue_entity(class.flipper(self.p3d, self.web, self.player, self.difficulty, true))
+						self:queue_entity(class.flipper(self, self.p3d, self.web, self.player, self.difficulty, true))
 					end
 					self.difficulty -= .05
 				end
@@ -1161,11 +1133,11 @@ function state.gameplay:update()
 			self.timer.thwomp -= self.difficulty
 			while self.timer.thwomp <= 0 do
 				self.timer.thwomp += 1600 + rnd(700)
-				self:queue_entity(class.thwomp(self.web, self.difficulty))
+				self:queue_entity(class.thwomp(self, self.web, self.difficulty))
 				self.difficulty -= .1
 				if rnd(1) > .9 then
 					for i = 1, flr(self.difficulty) do
-						self:queue_entity(class.thwomp(self.web, self.difficulty))
+						self:queue_entity(class.thwomp(self, self.web, self.difficulty))
 					end
 				end
 				sfx(14, 3)
@@ -1173,7 +1145,7 @@ function state.gameplay:update()
 			self.timer.phantom -= self.difficulty
 			while self.timer.phantom <= 0 do
 				self.timer.phantom += 2000 + rnd(1000)
-				self:queue_entity(class.phantom(self.web, self.difficulty))
+				self:queue_entity(class.phantom(self, self.web, self.difficulty))
 				self.difficulty -= 1/3
 				sfx(14, 3)
 			end
@@ -1265,9 +1237,6 @@ function state.gameplay:update()
 end
 
 function state.gameplay:leave()
-	for listener in all(self.listeners) do
-		conversation:deafen(listener)
-	end
 	menuitem(1)
 	menuitem(2)
 	menuitem(3)
